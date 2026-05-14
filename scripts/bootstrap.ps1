@@ -139,11 +139,24 @@ New-Item -ItemType Directory -Path $ClaudeDir -Force | Out-Null
 if (-not $cfg.PEER_IDS -and -not $ExtraDir) {
     Write-Host "  Optional: also sync a code/projects directory between devices."
     Write-Host "  (e.g. ~/Desktop/projekte, ~/code -- leave blank to skip)" -ForegroundColor DarkGray
-    $ExtraDir = Read-WithDefault "Extra folder path" ""
-    if ($ExtraDir) {
+    while ($true) {
+        $ExtraDir = Read-WithDefault "Extra folder path" ""
+        if (-not $ExtraDir) { break }
         $ExtraDir = $ExtraDir -replace '^~', $env:USERPROFILE.Replace('\','/')
-        $ExtraLabel = Read-WithDefault "Label for this folder" "code"
-        New-Item -ItemType Directory -Path $ExtraDir -Force | Out-Null
+        if (Test-Path $ExtraDir) {
+            Ok "Path exists: $ExtraDir"
+            $ExtraLabel = Read-WithDefault "Label for this folder" "code"
+            break
+        }
+        Warn "Path '$ExtraDir' doesn't exist on this device."
+        if (Confirm-YesNo "Create it?") {
+            New-Item -ItemType Directory -Path $ExtraDir -Force | Out-Null
+            Ok "Created $ExtraDir"
+            $ExtraLabel = Read-WithDefault "Label for this folder" "code"
+            break
+        }
+        Write-Host "  (typo? press Enter to retry, or type blank to skip extra folder)" -ForegroundColor DarkGray
+        $ExtraDir = ""
     }
 }
 

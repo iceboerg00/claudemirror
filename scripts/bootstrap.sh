@@ -155,12 +155,25 @@ mkdir -p "$CLAUDE_DIR"
 if [[ -z "${PEER_IDS:-}" && -z "$EXTRA_SYNC_DIR" ]]; then
   echo "  Optional: also sync a code/projects directory between devices."
   echo "  ${DIM}(e.g. ~/Desktop/projekte, ~/code -- leave blank to skip)${RESET}"
-  EXTRA_SYNC_DIR=$(prompt "Extra folder path" "")
-  if [[ -n "$EXTRA_SYNC_DIR" ]]; then
+  while true; do
+    EXTRA_SYNC_DIR=$(prompt "Extra folder path" "")
+    [[ -z "$EXTRA_SYNC_DIR" ]] && break
     EXTRA_SYNC_DIR="${EXTRA_SYNC_DIR/#\~/$HOME}"
-    EXTRA_SYNC_LABEL=$(prompt "Label for this folder (used as Syncthing folder ID)" "code")
-    mkdir -p "$EXTRA_SYNC_DIR"
-  fi
+    if [[ -d "$EXTRA_SYNC_DIR" ]]; then
+      ok "Path exists: $EXTRA_SYNC_DIR"
+      EXTRA_SYNC_LABEL=$(prompt "Label for this folder (used as Syncthing folder ID)" "code")
+      break
+    fi
+    warn "Path '$EXTRA_SYNC_DIR' doesn't exist on this device."
+    if confirm "Create it?"; then
+      mkdir -p "$EXTRA_SYNC_DIR"
+      ok "Created $EXTRA_SYNC_DIR"
+      EXTRA_SYNC_LABEL=$(prompt "Label for this folder (used as Syncthing folder ID)" "code")
+      break
+    fi
+    echo "  ${DIM}(typo? press Enter to retry, or type blank to skip extra folder)${RESET}"
+    EXTRA_SYNC_DIR=""
+  done
 fi
 
 note "Deploying ignore patterns..."
