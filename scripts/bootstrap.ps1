@@ -151,16 +151,16 @@ if ($Reset) {
                     Invoke-RestMethod -Uri "$Base/config/folders/$fid" -Method Delete -Headers $AuthHdr -ErrorAction Stop | Out-Null
                     Ok "removed folder: $fid"
                 } catch {
-                    Note "folder $fid: probably didn't exist"
+                    Note "folder ${fid}: probably didn't exist"
                 }
             }
             $Ids = if ($cfg.PEER_IDS) { @($cfg.PEER_IDS.Split(',') | Where-Object { $_ }) } else { @() }
-            foreach ($pid in $Ids) {
+            foreach ($peerId in $Ids) {
                 try {
-                    Invoke-RestMethod -Uri "$Base/config/devices/$pid" -Method Delete -Headers $AuthHdr -ErrorAction Stop | Out-Null
-                    Ok "removed peer: $($pid.Substring(0,7))..."
+                    Invoke-RestMethod -Uri "$Base/config/devices/$peerId" -Method Delete -Headers $AuthHdr -ErrorAction Stop | Out-Null
+                    Ok "removed peer: $($peerId.Substring(0,7))..."
                 } catch {
-                    Note "peer $($pid.Substring(0,7))...: not found"
+                    Note "peer $($peerId.Substring(0,7))...: not found"
                 }
             }
         } else {
@@ -360,26 +360,26 @@ if (Confirm-YesNo "Add a peer device now?") {
     Pause-Wizard
 
     while ($true) {
-        $pid = Read-WithDefault "Other device's ID (or 'done')" ""
-        if (-not $pid -or $pid -eq "done") { break }
-        if ($pid -notmatch '^[A-Z0-9]{7}(-[A-Z0-9]{7}){7}$') {
+        $peerId = Read-WithDefault "Other device's ID (or 'done')" ""
+        if (-not $peerId -or $peerId -eq "done") { break }
+        if ($peerId -notmatch '^[A-Z0-9]{7}(-[A-Z0-9]{7}){7}$') {
             Warn "That doesn't look like a Syncthing device ID. Try again, or 'done'."
             continue
         }
-        if ($pid -eq $SelfId) {
+        if ($peerId -eq $SelfId) {
             Warn "That's THIS device's own ID -- you don't add yourself as a peer."
             continue
         }
-        if ($Ids -contains $pid) {
+        if ($Ids -contains $peerId) {
             Warn "This peer is already configured. Skipping."
             continue
         }
         $pname = Read-WithDefault "Name for this peer" "Peer-$($Ids.Count + 1)"
         $aon = if (Confirm-YesNo "Is this peer always-on (a desktop/Pi that stays running)?") { "true" } else { "false" }
-        $Ids   += $pid
+        $Ids   += $peerId
         $Names += $pname
         $Alw   += $aon
-        Ok "Added: $pname ($($pid.Substring(0,7))...) always-on=$aon"
+        Ok "Added: $pname ($($peerId.Substring(0,7))...) always-on=$aon"
         Write-Host ""
         if (-not (Confirm-YesNo "Add another peer?")) { break }
         Write-Host ""
@@ -429,8 +429,8 @@ function Upsert-Folder($id, $path) {
     $exists = $false
     try { Invoke-RestMethod -Uri "$Base/config/folders/$id" -Headers $AuthHdr -ErrorAction Stop | Out-Null; $exists = $true } catch {}
     $devices = @( @{ deviceID = $SelfId; introducedBy = ""; encryptionPassword = "" } )
-    foreach ($pid in $Ids) {
-        $devices += @{ deviceID = $pid; introducedBy = ""; encryptionPassword = "" }
+    foreach ($peerId in $Ids) {
+        $devices += @{ deviceID = $peerId; introducedBy = ""; encryptionPassword = "" }
     }
     $body = @{
         id = $id; label = $id; path = $path; type = "sendreceive"
@@ -465,12 +465,12 @@ if ($Ids.Count -gt 0) {
             $conns = Invoke-RestMethod -Uri "$Base/system/connections" -Headers $AuthHdr -ErrorAction Stop
             $allSeen = $true
             for ($i = 0; $i -lt $Ids.Count; $i++) {
-                $pid = $Ids[$i]
-                if ($seen.ContainsKey($pid)) { continue }
-                $c = $conns.connections.$pid
+                $peerId = $Ids[$i]
+                if ($seen.ContainsKey($peerId)) { continue }
+                $c = $conns.connections.$peerId
                 if ($c -and $c.connected) {
                     Ok "$($Names[$i]): connected"
-                    $seen[$pid] = $true
+                    $seen[$peerId] = $true
                 } else { $allSeen = $false }
             }
             if ($allSeen) { break }
