@@ -93,7 +93,7 @@ Two synced folders by default — both treated as first-class.
 | `skills/`, `plans/`, `tasks/`, `agents/` | `cache/`, `paste-cache/`, `shell-snapshots/`, `session-env/`, `telemetry/`, `debug/`, `downloads/`, `backups/` — volatile |
 | `history.jsonl`, `CLAUDE.md` | Plugin/skill symlinks known to break Win ↔ Linux (e.g. `skills/impeccable`) |
 | `plugins/` (full, can be hundreds of MB) | |
-| `hooks/`, `statusline.js`, root-level scripts | |
+| `hooks/` and other root-level scripts | |
 
 ### Folder 2: a project/code directory — opt-in during setup
 
@@ -109,9 +109,23 @@ The wizard asks for a path (e.g. `~/Desktop/projekte`, `~/code`). If you provide
 
 Skip this entirely if you'd rather only sync Claude state and keep code in git.
 
+#### Why is X not synced if I need it on the other device?
+
+Most "excluded" items are things you **don't need to sync** because they regenerate locally:
+
+| Excluded | Why | How you get it on the other device |
+|---|---|---|
+| `node_modules/`, `.venv/`, `dist/`, `build/`, `target/`, `.dart_tool/` | Often huge (hundreds of MB to GBs); contain platform-specific binaries (Linux `.so` ≠ Windows `.dll`); changes constantly during development | Source files + lockfiles **are** synced. Run `npm install` / `pip install -r requirements.txt` / `cargo build` once on the other device — same env in 30s |
+| `__pycache__/`, `.pytest_cache/`, `.ruff_cache/` | Regenerated automatically | Just run your code/tests, they rebuild instantly |
+| `.idea/`, `.vscode/` (workspace state, not project settings) | Per-machine UI state (window positions, breakpoints, recent files) | Re-open the project — IDE figures it out |
+| `.env`, `*.pem`, `*.key` | Security default — secrets shouldn't sync casually | If you DO want them synced, edit `~/Desktop/<your-folder>/.stignore` and remove those lines. Or use a dedicated secrets manager. |
+| `.DS_Store`, `Thumbs.db` | OS-specific file-system metadata, no value cross-platform | Generated automatically by Finder/Explorer when you open the folder |
+
+**Customize:** the `.stignore` file in each synced folder is just a text file — edit it on any device and Syncthing picks up the change automatically. Add patterns to exclude more, or remove lines to sync things the defaults skip.
+
 ### Important caveats
 
-- **`hooks/` and `statusline.js` sync the files but not their registration.** That registration lives in `settings.json` (per-device) with hardcoded paths like `C:/Users/USER/.claude/hooks/...`. To activate on another platform, add the correct path in that platform's `settings.json`.
+- **`hooks/` and similar custom scripts sync the files but not their registration.** Hook activation lives in `settings.json` (per-device) with hardcoded paths like `C:/Users/USER/.claude/hooks/...`. To activate on another platform, add the correct path in that platform's `settings.json`.
 - **`plugins/` includes platform binaries.** Some plugins ship native libraries (`.dll`/`.so`) that won't work cross-OS. Re-install affected plugins per-platform via Claude's plugin command — it fetches the right architecture.
 - **Project folder sync ≠ git replacement.** Sync moves bytes between your devices in real-time, including uncommitted work. Push to git for shareable, history-tracked snapshots.
 
@@ -123,7 +137,7 @@ Skip this entirely if you'd rather only sync Claude state and keep code in git.
 Both devices will write to the same `<session>.jsonl` — Syncthing creates `.sync-conflict-*` files. Workflow: close Claude on device A, wait for green status, then open on device B.
 
 ### `settings.json` is per-device
-Paths like `C:\Users\USER\.claude\statusline.js` don't exist on Linux. The wizard does NOT touch your existing `settings.json`. If you have one with hooks/statusLine, maintain a copy per platform yourself.
+Paths inside `settings.json` (e.g. hook commands, statusLine command) reference absolute paths like `C:\Users\USER\.claude\...` which don't exist on Linux. The wizard does NOT touch your existing `settings.json`. If yours has hooks or a statusLine, maintain a copy per platform yourself.
 
 ### Cross-platform Claude project folder names
 Claude derives `~/.claude/projects/<id>/` from the absolute pwd:
