@@ -1,6 +1,7 @@
 # bootstrap.ps1 -- guided wizard for Windows / PowerShell
 # Sets up Syncthing-based sync of ~/.claude across devices.
 # Re-runnable: each invocation can add more peers.
+# ASCII-only (works on Windows PowerShell 5.1 default encoding).
 
 $ErrorActionPreference = "Stop"
 
@@ -14,31 +15,31 @@ $RepoUrl     = "https://github.com/iceboerg00/claude-code-syncthing.git"
 
 function Phase($n, $total, $title) {
     Write-Host ""
-    Write-Host "════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-    Write-Host "  PHASE $n/$total — $title" -ForegroundColor Cyan
-    Write-Host "════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+    Write-Host "====================================================================" -ForegroundColor Cyan
+    Write-Host "  PHASE $n/$total -- $title" -ForegroundColor Cyan
+    Write-Host "====================================================================" -ForegroundColor Cyan
     Write-Host ""
 }
 function Banner($text) {
     Write-Host ""
-    Write-Host "┌────────────────────────────────────────────────────────────────────┐" -ForegroundColor Cyan
-    Write-Host "│  $text" -ForegroundColor Cyan
-    Write-Host "└────────────────────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+    Write-Host "+-------------------------------------------------------------------+" -ForegroundColor Cyan
+    Write-Host "|  $text" -ForegroundColor Cyan
+    Write-Host "+-------------------------------------------------------------------+" -ForegroundColor Cyan
     Write-Host ""
 }
 function Box-Command($cmd) {
     $len = $cmd.Length + 4
-    $line = "─" * $len
-    Write-Host "  ┌$line┐" -ForegroundColor Cyan
-    Write-Host "  │  " -NoNewline -ForegroundColor Cyan
+    $line = "-" * $len
+    Write-Host "  +$line+" -ForegroundColor Cyan
+    Write-Host "  |  " -NoNewline -ForegroundColor Cyan
     Write-Host $cmd -NoNewline
-    Write-Host "  │" -ForegroundColor Cyan
-    Write-Host "  └$line┘" -ForegroundColor Cyan
+    Write-Host "  |" -ForegroundColor Cyan
+    Write-Host "  +$line+" -ForegroundColor Cyan
 }
-function Ok($msg)    { Write-Host "  ✓ " -NoNewline -ForegroundColor Green; Write-Host $msg }
-function Note($msg)  { Write-Host "  $msg" -ForegroundColor DarkGray }
-function Warn($msg)  { Write-Host "  ! " -NoNewline -ForegroundColor Yellow; Write-Host $msg }
-function Fail($msg)  { Write-Host "  ✗ " -NoNewline -ForegroundColor Red; Write-Host $msg; exit 1 }
+function Ok($msg)    { Write-Host "  [OK]   " -NoNewline -ForegroundColor Green; Write-Host $msg }
+function Note($msg)  { Write-Host "         $msg" -ForegroundColor DarkGray }
+function Warn($msg)  { Write-Host "  [WARN] " -NoNewline -ForegroundColor Yellow; Write-Host $msg }
+function Fail($msg)  { Write-Host "  [FAIL] " -NoNewline -ForegroundColor Red; Write-Host $msg; exit 1 }
 
 function Pause-Wizard {
     Write-Host ""
@@ -63,14 +64,14 @@ function Confirm-YesNo($prompt) {
 
 Clear-Host
 Write-Host ""
-Write-Host "   ┌─────────────────────────────────────────────────────────────┐" -ForegroundColor Cyan
-Write-Host "   │                                                             │" -ForegroundColor Cyan
-Write-Host "   │       claude-code-syncthing  —  Setup Wizard                │" -ForegroundColor Cyan
-Write-Host "   │                                                             │" -ForegroundColor Cyan
-Write-Host "   │   Sync your Claude Code state across multiple devices,      │" -ForegroundColor Cyan
-Write-Host "   │   peer-to-peer, no cloud account.                           │" -ForegroundColor Cyan
-Write-Host "   │                                                             │" -ForegroundColor Cyan
-Write-Host "   └─────────────────────────────────────────────────────────────┘" -ForegroundColor Cyan
+Write-Host "   +-------------------------------------------------------------+" -ForegroundColor Cyan
+Write-Host "   |                                                             |" -ForegroundColor Cyan
+Write-Host "   |       claude-code-syncthing  --  Setup Wizard               |" -ForegroundColor Cyan
+Write-Host "   |                                                             |" -ForegroundColor Cyan
+Write-Host "   |   Sync your Claude Code state across multiple devices,      |" -ForegroundColor Cyan
+Write-Host "   |   peer-to-peer, no cloud account.                           |" -ForegroundColor Cyan
+Write-Host "   |                                                             |" -ForegroundColor Cyan
+Write-Host "   +-------------------------------------------------------------+" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Platform detected: Windows  (host: $env:COMPUTERNAME)"
 Write-Host ""
@@ -135,7 +136,6 @@ $ExtraDir   = $cfg.EXTRA_SYNC_DIR
 $ExtraLabel = if ($cfg.EXTRA_SYNC_LABEL) { $cfg.EXTRA_SYNC_LABEL } else { "code" }
 New-Item -ItemType Directory -Path $ClaudeDir -Force | Out-Null
 
-# Optional extra dir on first run
 if (-not $cfg.PEER_IDS -and -not $ExtraDir) {
     Write-Host "  Optional: also sync a code/projects directory between devices."
     Write-Host "  (e.g. ~/Desktop/projekte, ~/code -- leave blank to skip)" -ForegroundColor DarkGray
@@ -155,7 +155,6 @@ if ($ExtraDir) {
     Ok "$ExtraDir\.stignore"
 }
 
-# Autostart
 $TaskName = "Syncthing"
 if (-not (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue)) {
     Note "Setting up Scheduled Task autostart..."
@@ -198,7 +197,6 @@ Write-Host ""
 Write-Host "  (You can also see it later: web UI at http://127.0.0.1:8384 -> Actions -> Show ID)" -ForegroundColor DarkGray
 Write-Host ""
 
-# Parse existing
 $Ids   = if ($cfg.PEER_IDS)        { @($cfg.PEER_IDS.Split(',')        | Where-Object { $_ }) } else { @() }
 $Names = if ($cfg.PEER_NAMES)      { @($cfg.PEER_NAMES.Split(',')      | Where-Object { $_ }) } else { @() }
 $Alw   = if ($cfg.PEERS_ALWAYS_ON) { @($cfg.PEERS_ALWAYS_ON.Split(',') | Where-Object { $_ }) } else { @() }
@@ -208,7 +206,7 @@ if ($Ids.Count -gt 0) {
     for ($i = 0; $i -lt $Ids.Count; $i++) {
         $marker = ""
         if ($Alw[$i] -eq "true") { $marker = " (always-on)" }
-        Write-Host "    • " -NoNewline; Write-Host $Names[$i] -NoNewline
+        Write-Host "    * " -NoNewline; Write-Host $Names[$i] -NoNewline
         Write-Host "  $($Ids[$i].Substring(0, [Math]::Min(7,$Ids[$i].Length)))..." -NoNewline -ForegroundColor DarkGray
         if ($marker) { Write-Host $marker -ForegroundColor Yellow } else { Write-Host "" }
     }
@@ -267,7 +265,7 @@ if (Confirm-YesNo "Add a peer device now?") {
     Ok "Config saved to $ConfigFile"
 }
 
-# ---------- 5. Apply config ----------
+# ---------- 5. Apply ----------
 
 Phase 4 4 "Apply Syncthing config"
 
@@ -332,9 +330,9 @@ if ($ExtraDir) { Upsert-Folder $ExtraLabel $ExtraDir }
 # ---------- 6. Final summary ----------
 
 Write-Host ""
-Write-Host "════════════════════════════════════════════════════════════════════" -ForegroundColor Green
-Write-Host "  ✓ Setup complete on this device" -ForegroundColor Green
-Write-Host "════════════════════════════════════════════════════════════════════" -ForegroundColor Green
+Write-Host "====================================================================" -ForegroundColor Green
+Write-Host "  [OK] Setup complete on this device" -ForegroundColor Green
+Write-Host "====================================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  This device's ID (share with future peers):"
 Write-Host "  $SelfId" -ForegroundColor Green
@@ -356,8 +354,8 @@ if ($Ids.Count -gt 0) {
         Write-Host $SelfId -ForegroundColor Green
     }
     Write-Host ""
-    Write-Host "  Open the web UI to watch — devices show 'Connected' (green) when paired," -ForegroundColor DarkGray
-    Write-Host "  then folders go 'Up to Date' once initial sync finishes (10–60 min for large state)." -ForegroundColor DarkGray
+    Write-Host "  Open the web UI to watch -- devices show 'Connected' (green) when paired," -ForegroundColor DarkGray
+    Write-Host "  then folders go 'Up to Date' once initial sync finishes (10-60 min for large state)." -ForegroundColor DarkGray
 } else {
     Warn "No peers configured yet. Run this wizard again with peer IDs"
     Write-Host "  to enable sync. Until then, Syncthing is installed but not sharing anything."
