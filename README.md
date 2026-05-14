@@ -49,6 +49,8 @@ Same idea as B, but the always-on node is a Pi running Home Assistant OS. You in
 
 ## ⚡ Quick Start
 
+> **Detailed walkthrough:** [docs/installation.md](docs/installation.md) — prerequisites per platform, scenario-by-scenario steps, expected output, verification checks.
+
 ### 1. Clone
 
 ```bash
@@ -72,14 +74,14 @@ cd claude-code-syncthing
 
 The bootstrap script does:
 1. Install Syncthing if missing
-2. Configure autostart (systemd user / Scheduled Task)
+2. Configure autostart (systemd user / Scheduled Task / brew services)
 3. Prompt for peer device IDs on first run (saved to `config.env`, gitignored)
 4. Use Syncthing's REST API to register peers + create folders with sane defaults (versioning Trash 7d, smart ignore patterns)
-5. Cross-platform helper: symlinks Linux-named Claude project folders to Windows-named ones so `claude --resume` works after syncing from a Windows machine
+5. Cross-platform helper: symlinks Linux/macOS-named Claude project folders to Windows-named ones so `claude --resume` works after syncing from a Windows machine
 
 ### 3. Repeat on each device
 
-Each device shows its own Device ID at the end of the bootstrap. Pass them around — or paste them in when prompted on each new device.
+Each device shows its own Device ID at the end of the bootstrap. Pass them around — or paste them in when prompted on each new device. See the [installation guide](docs/installation.md#4-walkthrough-scenario-a) for the exact prompts and what to enter for your scenario.
 
 ---
 
