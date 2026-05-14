@@ -228,26 +228,30 @@ if ($Ids.Count -gt 0) {
 
 if (Confirm-YesNo "Add a peer device now?") {
 
-    Banner "On your OTHER device, run these commands:"
+    Banner "Set up the OTHER device, then come back here:"
+    Write-Host "  Linux / macOS / Windows -- clone this repo and run the wizard:"
     Box-Command "git clone $RepoUrl"
     Write-Host ""
     Box-Command "cd claude-code-syncthing"
     Write-Host ""
     Write-Host "  On Linux/macOS:" -ForegroundColor DarkGray
     Box-Command "./scripts/bootstrap.sh"
-    Write-Host ""
     Write-Host "  On Windows:" -ForegroundColor DarkGray
     Box-Command ".\scripts\bootstrap.ps1"
     Write-Host ""
-    Write-Host "  On HAOS see docs/haos-addon.md (UI clicks, no script)." -ForegroundColor DarkGray
+    Write-Host "  HAOS Pi -- install the Syncthing add-on (UI, no script)." -ForegroundColor DarkGray
+    Write-Host "    -> docs/haos-addon.md" -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  When the other side runs its wizard:"
-    Write-Host "    1. It will print " -NoNewline; Write-Host "its" -NoNewline -ForegroundColor White
-    Write-Host " device ID. Copy that."
-    Write-Host "    2. It will ask for " -NoNewline; Write-Host "your" -NoNewline -ForegroundColor White
-    Write-Host " device ID. Paste this one:"
-    Write-Host "       $SelfId" -ForegroundColor Green
-    Write-Host "    3. Come back here when you have its ID."
+    Write-Host "  Either way, the other device will SHOW its Device ID:"
+    Write-Host "    * wizard prints it at the end"
+    Write-Host "    * HAOS UI: Actions -> Show ID"
+    Write-Host ""
+    Write-Host "  If the other side ASKS for YOUR Device ID, paste this:"
+    Write-Host "    $SelfId" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "  (HAOS doesn't ask -- it auto-accepts whoever connects.)" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host "  Come back here when you have the other device's Device ID."
     Pause-Wizard
 
     while ($true) {

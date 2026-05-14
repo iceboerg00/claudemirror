@@ -252,19 +252,27 @@ fi
 # Decide: add a peer now?
 if confirm "Add a peer device now?"; then
 
-  # Big copy-paste box for the OTHER device
-  banner "On your OTHER device, run these commands:"
-  if [[ "$PLATFORM" == "linux" || "$PLATFORM" == "macos" ]]; then
-    box_command "git clone $REPO_URL && cd claude-code-syncthing && ./scripts/bootstrap.sh"
-  fi
-  echo "  ${DIM}On Windows the script is ${BOLD}.\\scripts\\bootstrap.ps1${RESET}${DIM}.${RESET}"
-  echo "  ${DIM}On HAOS see docs/haos-addon.md (UI clicks, no script).${RESET}"
+  # Copy-paste boxes for the OTHER device, covering both script and HAOS paths
+  banner "Set up the OTHER device, then come back here:"
+  echo "  ${BOLD}Linux / macOS / Windows${RESET} -- clone this repo and run the wizard:"
+  box_command "git clone $REPO_URL && cd claude-code-syncthing"
+  echo "  ${DIM}then:${RESET}"
+  box_command "./scripts/bootstrap.sh           (Linux/macOS)"
+  box_command ".\\scripts\\bootstrap.ps1        (Windows)"
   echo
-  echo "  When the other side runs its wizard:"
-  echo "    1. It will print ${BOLD}its${RESET} device ID. Copy that."
-  echo "    2. It will ask for ${BOLD}your${RESET} device ID. Paste this one:"
-  echo "       ${GREEN}${SELF_ID}${RESET}"
-  echo "    3. Come back here when you have its ID."
+  echo "  ${BOLD}HAOS Pi${RESET} -- install the Syncthing add-on (UI, no script)."
+  echo "    ${DIM}-> docs/haos-addon.md${RESET}"
+  echo
+  echo "  Either way, the other device will ${BOLD}show its Device ID${RESET}:"
+  echo "    * wizard prints it at the end"
+  echo "    * HAOS UI: Actions -> Show ID"
+  echo
+  echo "  If the other side ${BOLD}asks${RESET} for YOUR Device ID, paste this:"
+  echo "    ${GREEN}${SELF_ID}${RESET}"
+  echo
+  echo "  ${DIM}(HAOS doesn't ask -- it auto-accepts whoever connects.)${RESET}"
+  echo
+  echo "  Come back here when you have the other device's Device ID."
   echo
   pause
 
