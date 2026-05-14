@@ -83,15 +83,6 @@ The bootstrap script does:
 
 Each device shows its own Device ID at the end of the bootstrap. Pass them around — or paste them in when prompted on each new device. See the [installation guide](docs/installation.md#4-walkthrough-scenario-a) for the exact prompts and what to enter for your scenario.
 
-### Just want to see what the wizard looks like?
-
-```bash
-./scripts/demo.sh    # Linux/macOS
-.\scripts\demo.ps1   # Windows
-```
-
-Runs the full UX walkthrough with fake device IDs — installs nothing, calls no API, writes no real files. Use it to preview the flow before committing.
-
 ---
 
 ## What gets synced (and what doesn't)
