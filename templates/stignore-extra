@@ -1,0 +1,65 @@
+// Syncthing ignore patterns for the EXTRA_SYNC_DIR (typically a code/projects dir)
+// Deployed by the bootstrap scripts as <EXTRA_SYNC_DIR>/.stignore
+
+// Node / JavaScript
+node_modules
+.next
+.nuxt
+.turbo
+dist
+build
+out
+.cache
+.parcel-cache
+.svelte-kit
+*.tsbuildinfo
+
+// Python
+__pycache__
+*.pyc
+*.pyo
+.venv
+venv
+env
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+// Rust / Go
+target
+vendor
+
+// Java / Gradle
+.gradle
+*.class
+*.jar
+
+// Flutter / Dart
+.dart_tool
+.flutter-plugins
+.flutter-plugins-dependencies
+
+// Logs & dbs
+*.log
+*.sqlite-journal
+
+// Env / secrets — NEVER sync these
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+// IDE
+.idea
+.vscode
+*.swp
+
+// OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+// Syncthing
+.stversions
+.stfolder

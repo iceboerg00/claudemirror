@@ -1,0 +1,11 @@
+# Force LF for shell scripts so they work on Linux when cloned on Windows
+*.sh         text eol=lf
+*.env        text eol=lf
+stignore-*   text eol=lf
+
+# PowerShell prefers CRLF
+*.ps1        text eol=crlf
+
+# Docs default to platform native
+*.md         text
+*.json       text

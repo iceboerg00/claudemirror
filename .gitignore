@@ -1,0 +1,12 @@
+# Local config — contains your device IDs, not for sharing
+config.env
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.idea/
+.vscode/
+*.swp

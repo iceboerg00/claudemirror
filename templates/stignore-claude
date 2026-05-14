@@ -1,0 +1,49 @@
+// Syncthing ignore patterns for ~/.claude
+// Deployed by the bootstrap scripts as ~/.claude/.stignore
+
+// Platform-specific settings (paths in here differ between OSes)
+settings.json
+settings.local.json
+
+// Volatile caches and per-machine logs
+cache
+paste-cache
+shell-snapshots
+session-env
+telemetry
+debug
+downloads
+stats-cache.json
+
+// Per-device backups
+backups
+*.log
+
+// OS / editor crud
+.DS_Store
+Thumbs.db
+desktop.ini
+
+// Syncthing's own versioning data
+.stversions
+.stfolder
+
+// --- Cross-platform Claude session resume helpers ---
+// Linux Claude derives project folder name from absolute pwd, so on Ubuntu
+// the folders are named like "-home-mike-Desktop-myproject" while Windows
+// names them "C--Users-Mike-Desktop-myproject". The bootstrap on Linux
+// creates the "-home-mike-*" entries as SYMLINKS to the Windows-named real
+// folders. These symlinks are device-local and should not propagate.
+projects/-home-*
+projects/-Users-*
+
+// --- Plugin / skill symlinks that don't survive Windows <-> Linux ---
+// Some skill installers create symlinks (e.g. impeccable -> ~/.agents/skills/X).
+// NTFS symlink semantics differ from ext4 -> these cause sync errors.
+// If you don't have these plugins installed, the patterns are no-ops.
+skills/impeccable
+plugins/marketplaces/*/openclaw/skills/*/SKILL.md
+plugins/marketplaces/ui-ux-pro-max-skill/.claude/skills/ui-ux-pro-max/data
+plugins/marketplaces/ui-ux-pro-max-skill/.claude/skills/ui-ux-pro-max/scripts
+plugins/cache/ui-ux-pro-max-skill/**/data
+plugins/cache/ui-ux-pro-max-skill/**/scripts
