@@ -1,6 +1,6 @@
 # claude-code-syncthing
 
-> Sync your [Claude Code](https://claude.com/claude-code) state — sessions, skills, plans, agents, plugins — across all your devices using [Syncthing](https://syncthing.net/). Live, P2P, end-to-end encrypted, no cloud account.
+> Sync your [Claude Code](https://claude.com/claude-code) **state** (sessions, skills, plans, agents, plugins) **and your project folders** across all your devices using [Syncthing](https://syncthing.net/). Live, P2P, end-to-end encrypted, no cloud account.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#)
@@ -10,8 +10,9 @@
 ## What this gives you
 
 - Open Claude Code on your desktop, take your laptop to a café, run `claude --resume` — your full session history is there.
-- Skills, plans, custom hooks, agents stay in sync.
-- Optional: also sync a code/projects directory between devices.
+- **Your project folders sync too** — work on the same code on any device without juggling git pulls, USB sticks, or "where did I leave off?".
+- Skills, plans, agents, plugins stay in sync across devices.
+- Smart `.stignore` defaults exclude the noise: `node_modules`, build artifacts, `.venv`, secrets, IDE junk — only what you actually edit moves.
 - Cross-platform: Windows, macOS, Linux, Raspberry Pi OS, Home Assistant OS (as a relay).
 
 ## What this is not
@@ -47,7 +48,7 @@ cd claude-code-syncthing
 | Windows (PowerShell) | `.\scripts\bootstrap.ps1` |
 | Home Assistant OS | UI clicks — see [`docs/haos-addon.md`](docs/haos-addon.md) |
 
-The wizard installs Syncthing, sets up autostart, configures `~/.claude` as a synced folder, then walks you through pairing with your other devices.
+The wizard installs Syncthing, sets up autostart, configures `~/.claude` as a synced folder, **asks if you also want to sync a project/code directory** (e.g. `~/Desktop/projekte`, `~/code`), then walks you through pairing with your other devices.
 
 ### 3. Recommended order
 
@@ -82,24 +83,37 @@ PowerShell uses PascalCase flags: `-Reset`, `-Yes`, `-NoBrowser`, `-Help`.
 
 ## What's synced
 
-Fully synced from `~/.claude/`:
-- `projects/` — session histories (the main reason for this project)
-- `skills/`, `plans/`, `tasks/`, `agents/` — your work-in-progress
-- `history.jsonl`, `CLAUDE.md` — shell history, global instructions
-- `plugins/` — installed plugins (can be hundreds of MB)
-- `hooks/` — hook scripts (see caveat below)
-- `statusline.js` and similar single files at the root
+Two synced folders by default — both treated as first-class.
 
-Not synced (per [`templates/stignore-claude`](templates/stignore-claude)):
-- `settings.json` — paths inside differ per platform; you maintain it per-device
-- `cache/`, `paste-cache/`, `shell-snapshots/`, `session-env/`, `telemetry/`, `debug/`, `downloads/`, `backups/` — volatile per-device
-- Specific plugin/skill symlinks known to break Windows ↔ Linux (e.g. `skills/impeccable`, ui-ux-pro-max-skill data/scripts dirs)
+### Folder 1: `~/.claude/` (Claude state) — always synced
 
-**Important caveats:**
-- **`hooks/` and `statusline.js` sync, but only the *files*.** Their *registration* lives in `settings.json` (which doesn't sync) with hardcoded absolute paths like `C:/Users/USER/.claude/hooks/...`. To use them on another platform you must add the correct path in that platform's `settings.json`.
-- **`plugins/` sync includes platform binaries.** Some plugins ship native libraries (`.dll`/`.so`) that won't work on the other OS. Re-install affected plugins per-platform via Claude's plugin command if you hit issues; it fetches the right architecture.
+| Synced | Not synced (in [stignore-claude](templates/stignore-claude)) |
+|---|---|
+| `projects/` — session histories | `settings.json`, `settings.local.json` — paths differ per platform |
+| `skills/`, `plans/`, `tasks/`, `agents/` | `cache/`, `paste-cache/`, `shell-snapshots/`, `session-env/`, `telemetry/`, `debug/`, `downloads/`, `backups/` — volatile |
+| `history.jsonl`, `CLAUDE.md` | Plugin/skill symlinks known to break Win ↔ Linux (e.g. `skills/impeccable`) |
+| `plugins/` (full, can be hundreds of MB) | |
+| `hooks/`, `statusline.js`, root-level scripts | |
 
-Optional: a code/projects directory you specify during setup. Defaults to no extra folder.
+### Folder 2: a project/code directory — opt-in during setup
+
+The wizard asks for a path (e.g. `~/Desktop/projekte`, `~/code`). If you provide one, it's synced as a second Syncthing folder with sensible code-project ignores ([stignore-extra](templates/stignore-extra)):
+
+| Synced | Not synced |
+|---|---|
+| Source files, configs, docs, READMEs | `node_modules/`, `.next/`, `.nuxt/`, `dist/`, `build/`, `target/`, `.dart_tool/` |
+| Lockfiles (`package-lock.json` etc.) | `__pycache__/`, `.venv/`, `.pytest_cache/`, `.ruff_cache/` |
+| `.gitignore`, `.editorconfig` etc. | `.env`, `.env.*`, `*.pem`, `*.key` — secrets never sync |
+| | `.idea/`, `.vscode/`, `*.swp` — IDE state |
+| | `.DS_Store`, `Thumbs.db`, build logs |
+
+Skip this entirely if you'd rather only sync Claude state and keep code in git.
+
+### Important caveats
+
+- **`hooks/` and `statusline.js` sync the files but not their registration.** That registration lives in `settings.json` (per-device) with hardcoded paths like `C:/Users/USER/.claude/hooks/...`. To activate on another platform, add the correct path in that platform's `settings.json`.
+- **`plugins/` includes platform binaries.** Some plugins ship native libraries (`.dll`/`.so`) that won't work cross-OS. Re-install affected plugins per-platform via Claude's plugin command — it fetches the right architecture.
+- **Project folder sync ≠ git replacement.** Sync moves bytes between your devices in real-time, including uncommitted work. Push to git for shareable, history-tracked snapshots.
 
 ---
 
