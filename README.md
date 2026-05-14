@@ -51,6 +51,18 @@ Same idea as B, but the always-on node is a Pi running Home Assistant OS. You in
 
 > **Detailed walkthrough:** [docs/installation.md](docs/installation.md) — prerequisites per platform, scenario-by-scenario steps, expected output, verification checks.
 
+### Recommended order
+
+Always **start on your always-on device** — the others paste its Device ID as their always-on peer.
+
+| Scenario | Start here | Then |
+|---|---|---|
+| **A** (2 devices, desktop always-on) | Desktop | Laptop |
+| **B** (3 devices, dedicated Pi/NAS/VPS relay) | Relay (SSH in) | Desktop, then laptop |
+| **C** (3 devices, HAOS Pi as relay) | HAOS Pi via [add-on UI](docs/haos-addon.md) | Desktop, then laptop |
+
+The script (or HAOS add-on UI) prints the device's ID at the end. Copy it and paste on the next device.
+
 ### 1. Clone
 
 ```bash

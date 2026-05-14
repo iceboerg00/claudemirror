@@ -314,19 +314,32 @@ If you set `EXTRA_SYNC_DIR` in `config.env` to also sync a code directory, facto
 
 **Setup:** desktop + laptop + a Raspberry Pi 4/5 running Home Assistant OS.
 
+**Order matters here:** the HAOS Pi is the always-on device, so it's the **anchor**. You set it up first, get its Device ID, then the other devices paste that ID as their always-on peer. The bootstrap scripts cannot drive HAOS (no SSH access to the add-on), so the Pi side is UI clicks.
+
 HAOS doesn't let you SSH and `apt install` like normal Linux. You install Syncthing as a **Home Assistant add-on** instead.
 
 → Full instructions in [`haos-addon.md`](haos-addon.md). The short version:
 
+### Step 1 — On the HAOS Pi (do this FIRST)
+
 1. In HA: Settings → Add-ons → Add-on Store → top-right menu → Repositories → paste `https://github.com/Poeschl-HomeAssistant-Addons/repository`
 2. Install the **Syncthing** add-on, start it, open the Web UI
-3. Note the Pi's Device ID (Actions → Show ID)
+3. Note the Pi's Device ID (Actions → Show ID) — **copy it, you'll need it on every other device**
 4. Create two folders in the Pi's Syncthing UI:
    - Folder ID `claude`, path `/share/claude`, ignore patterns from [`../templates/stignore-claude`](../templates/stignore-claude), versioning Trash Can 14 days
    - (Optional) Folder ID matching your `EXTRA_SYNC_LABEL` (default `code`), path `/share/code`, ignore patterns from [`../templates/stignore-extra`](../templates/stignore-extra)
-5. On desktop and laptop, run the bootstrap and add the Pi's Device ID as a peer with always-on=yes
 
-Folder shares auto-match by ID, so once the desktop/laptop devices appear in the Pi's UI as "wants to connect", just accept the device-add notification. No manual folder accept needed.
+### Step 2 — On the desktop, then the laptop
+
+1. Clone this repo and run the bootstrap (`./scripts/bootstrap.sh` or `.\scripts\bootstrap.ps1`).
+2. When prompted "Add a peer device now?" answer **y**.
+3. Paste the **Pi's Device ID** (from Step 1.3), name it (e.g. `HA-Pi`), mark **always-on = yes**.
+
+Repeat on the laptop. Each non-Pi device that connects to the Pi gets auto-shared the folders (because both sides match by Folder ID).
+
+### Step 3 — Back on the HAOS Pi
+
+After each non-Pi device boots its Syncthing for the first time, the Pi UI shows a *"device wants to connect"* notification. Accept each. Folder shares auto-match by ID — no manual folder-accept needed.
 
 ---
 

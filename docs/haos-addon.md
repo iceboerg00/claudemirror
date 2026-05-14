@@ -2,6 +2,8 @@
 
 If you already run Home Assistant on a Pi 4 / Pi 5 / NUC with HAOS, that machine is a perfect 24/7 Syncthing relay. Storage permitting (a few GB for typical Claude state, more if you sync code), it adds a third sync peer that's always reachable.
 
+> **Start here for Scenario C.** Because HAOS doesn't let the bootstrap script SSH in and install Syncthing, the HAOS Pi has to be set up via the HA web UI **first**. Then desktop and laptop run the regular bootstrap and paste this Pi's Device ID as their always-on peer.
+
 ## Prerequisites
 
 - HAOS instance with web UI access
