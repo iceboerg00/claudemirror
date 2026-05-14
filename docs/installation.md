@@ -1,6 +1,6 @@
 # Installation Guide
 
-Full step-by-step walkthrough for setting up `claude-code-syncthing`. For a one-screen summary see the [README](../README.md). For troubleshooting after install, see [troubleshooting.md](troubleshooting.md).
+Full step-by-step walkthrough. For a one-screen summary see the [README](../README.md). Flag reference: [cli-reference.md](cli-reference.md). Common issues: [troubleshooting.md](troubleshooting.md).
 
 ---
 
@@ -9,16 +9,13 @@ Full step-by-step walkthrough for setting up `claude-code-syncthing`. For a one-
 1. [Before you start](#1-before-you-start)
 2. [Choose your scenario](#2-choose-your-scenario)
 3. [Per-platform prerequisites](#3-per-platform-prerequisites)
-   - [Linux (Debian/Ubuntu/Pi OS)](#linux-debianubuntupi-os)
-   - [Linux (Fedora/Arch)](#linux-fedoraarch)
-   - [macOS](#macos)
-   - [Windows](#windows)
 4. [Walkthrough: Scenario A — Two devices, one always-on](#4-walkthrough-scenario-a)
 5. [Walkthrough: Scenario B — Three devices with a dedicated relay](#5-walkthrough-scenario-b)
 6. [Walkthrough: Scenario C — HAOS as the relay](#6-walkthrough-scenario-c)
 7. [Verifying your install](#7-verifying-your-install)
 8. [Adding a new device later](#8-adding-a-new-device-later)
-9. [Common first-run issues](#9-common-first-run-issues)
+9. [Optional hardening](#9-optional-hardening)
+10. [Common first-run issues](#10-common-first-run-issues)
 
 ---
 
@@ -26,15 +23,15 @@ Full step-by-step walkthrough for setting up `claude-code-syncthing`. For a one-
 
 ### What this installs
 
-- **Syncthing** on each device — the actual sync daemon, ~30 MB
-- An **autostart** entry so Syncthing comes up automatically (systemd user service on Linux, `brew services` on macOS, Scheduled Task on Windows)
-- A **`.stignore`** file in `~/.claude/` so caches and platform-specific items don't sync
-- Optional: same `.stignore` in an additional code/projects directory
-- A **`config.env`** in the repo (gitignored) holding the device IDs of your peers
+- **Syncthing** on each device (~30 MB)
+- **Autostart**: systemd user service (Linux), `brew services` (macOS), Scheduled Task (Windows)
+- **`.stignore`** in `~/.claude/` so caches and platform-specific files don't sync
+- Optional: same `.stignore` style in an additional code/projects directory
+- **`config.env`** in the repo (gitignored) holding your peer Device IDs
 
 ### What this does NOT touch
 
-- Your existing `~/.claude/settings.json` — left exactly as-is. Settings differ between platforms (paths in hooks, statusline scripts), so each device manages its own.
+- Your existing `~/.claude/settings.json` — left exactly as-is. Settings differ between platforms.
 - Your existing `~/.claude/projects/` content — only new data flows in via sync.
 - Anything outside `~/.claude/` (and your optional extra folder).
 
@@ -42,102 +39,96 @@ Full step-by-step walkthrough for setting up `claude-code-syncthing`. For a one-
 
 | Decision | Options |
 |---|---|
-| **Always-on device?** | The desktop you leave running, a NAS, a Pi 4/5, a small VPS, a HAOS instance. Required — see Scenario chooser below. |
-| **Extra folder?** | Do you also want to sync code? If yes, pick a path (e.g. `~/Desktop/projekte`, `~/code`). Otherwise leave blank. |
-| **GitHub auth?** | The bootstrap doesn't need GitHub. You only need `gh` if you want to clone over HTTPS without entering credentials repeatedly. |
+| **Always-on device?** | A desktop you leave running, a NAS, a Pi 4/5, a small VPS, an HAOS instance. Required — sync only happens between devices that overlap online. |
+| **Extra folder?** | Sync code too? Pick a path (e.g. `~/Desktop/projekte`, `~/code`). Optional. |
+| **GUI auth?** | Default Syncthing GUI is bound to `127.0.0.1` only — local-only access. Setting a user/password is recommended for defense-in-depth, especially if you ever expose the port (Tailscale, reverse proxy). See [Optional hardening](#9-optional-hardening). |
 
 ---
 
 ## 2. Choose your scenario
 
 ```
-                                Is at least one of your everyday devices on 24/7?
-                                       /                        \
-                                     YES                        NO
-                                      |                          |
-                                      v                          v
-                           Scenario A (2 devices)     Need a relay -> Scenario B or C
-                                                                      /          \
-                                                                 dedicated    HAOS Pi
-                                                                 Pi/NAS/VPS     |
-                                                                     |          v
-                                                                     v       Scenario C
-                                                                  Scenario B
+                Is at least one of your everyday devices on 24/7?
+                       /                        \
+                      YES                       NO
+                       |                         |
+                       v                         v
+              Scenario A (2 devices)    Need a relay -> Scenario B or C
+                                                          /          \
+                                                     dedicated   HAOS Pi
+                                                     Pi/NAS/VPS     |
+                                                                    v
+                                                                Scenario C
 ```
 
-| Scenario | Devices | Always-on node |
-|---|---|---|
-| **A** | 2 (desktop + laptop) | the desktop |
-| **B** | 3 (desktop + laptop + Pi/NAS/VPS) | the Pi/NAS/VPS |
-| **C** | 3 (desktop + laptop + HAOS Pi) | the HAOS Pi |
+| Scenario | Devices | Always-on node | Start order |
+|---|---|---|---|
+| **A** | 2 (desktop + laptop) | the desktop | desktop → laptop |
+| **B** | 3 (desktop + laptop + Pi/NAS/VPS) | the relay | relay → desktop → laptop |
+| **C** | 3 (desktop + laptop + HAOS Pi) | the HAOS Pi | HAOS UI → desktop → laptop |
 
-You can start with A and add a relay later by re-running the bootstrap — peers are appended, not replaced.
+You can start with A and add a relay later — just re-run the bootstrap on each device with the new peer's ID.
 
 ---
 
 ## 3. Per-platform prerequisites
 
-### Linux (Debian/Ubuntu/Pi OS)
+The wizard's **Phase 1** runs pre-flight checks and warns you about missing tools.
 
-Installed by default on Ubuntu Desktop / Pi OS / WSL: bash, curl, sudo, systemd, python3.
+### Linux (Debian/Ubuntu/Pi OS)
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y curl python3 git
 ```
 
-The bootstrap will install Syncthing itself from the official APT repository (signed). If you're on a minimal server image, also install:
+The bootstrap installs Syncthing itself from the official APT repository.
 
+**Optional clipboard auto-copy** — install one of:
 ```bash
-sudo apt-get install -y systemd ca-certificates
+sudo apt-get install -y xclip            # X11
+sudo apt-get install -y wl-clipboard     # Wayland
 ```
+Without it, the wizard still works — you just have to copy the Device ID with the mouse.
 
-**WSL note:** `systemctl --user` requires `systemd` enabled in WSL. On recent WSL2 with Ubuntu 22.04+ this works out of the box. If you're on WSL1 or older WSL2, Syncthing will still install but won't autostart — you'll need to start it manually with `syncthing --no-browser &`.
+**WSL note:** `systemctl --user` requires systemd. WSL2 + Ubuntu 22.04+ has it by default. WSL1 doesn't — wizard will detect this and skip autostart (warning shown).
 
 ### Linux (Fedora/Arch)
 
-The bootstrap auto-detects the package manager. Make sure you have:
+The bootstrap auto-detects the package manager.
 
 ```bash
 # Fedora
-sudo dnf install -y curl python3 git
-
+sudo dnf install -y curl python3 git xclip
 # Arch
-sudo pacman -S curl python git
+sudo pacman -S curl python git xclip
 ```
 
 ### macOS
 
-You need Homebrew. If you don't have it:
+You need Homebrew. The pre-flight checks for it.
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-Then verify the tools the bootstrap uses:
-
-```bash
-brew --version
-python3 --version
-curl --version
-```
-
-These are present on a default macOS install after Xcode CLT, plus Homebrew adds Syncthing.
+`pbcopy` (clipboard) is built in — auto-copy works out of the box.
 
 ### Windows
 
-Open a regular (non-admin) PowerShell window. Verify:
+Open a regular (non-admin) PowerShell window.
 
 ```powershell
-winget --version
-$PSVersionTable.PSVersion
+winget --version           # ships with Windows 10/11 "App Installer"
+git --version              # winget install --id Git.Git -e if missing
+$PSVersionTable.PSVersion  # 5.1 (default) or 7+ both work
 ```
 
-- **winget** ships with modern Windows 10/11 ("App Installer" from Microsoft Store). If missing, install from the Store.
-- **PowerShell 5.1** is the system default and works for the bootstrap. PowerShell 7 also works.
-- **Git** is needed to clone the repo: `winget install --id Git.Git -e`
+The wizard installs Syncthing via winget. No admin rights needed — winget installs per-user. `Set-Clipboard` (clipboard auto-copy) is built in.
 
-The bootstrap installs Syncthing via winget. No admin rights required — winget installs per-user.
+### HAOS (Pi running Home Assistant OS)
+
+No script — the wizard cannot reach into HAOS. You install Syncthing as a community add-on via the HA web UI. See [`haos-addon.md`](haos-addon.md).
 
 ---
 
@@ -145,14 +136,14 @@ The bootstrap installs Syncthing via winget. No admin rights required — winget
 
 **Setup:** 1 always-on desktop + 1 mobile laptop.
 
-### Step 1 — Clone the repo on the desktop
+### Step 1 — Clone on the desktop
 
 ```bash
 git clone https://github.com/iceboerg00/claude-code-syncthing.git
 cd claude-code-syncthing
 ```
 
-### Step 2 — Run the bootstrap
+### Step 2 — Run the wizard
 
 Linux/macOS:
 ```bash
@@ -163,239 +154,272 @@ Windows:
 .\scripts\bootstrap.ps1
 ```
 
-Sample output:
+Sample output (5 phases):
+
 ```
-==> Platform: linux
-==> Installing Syncthing...
-[...apt output...]
-==> First run -- creating /home/mike/claude-code-syncthing/config.env
-==> Deploying .stignore files...
-==> Enabling syncthing.service (systemd --user)...
-    Waiting for Syncthing API ok
-==> This device ID: ABCDEFG-HIJKLMN-OPQRSTU-VWXYZ12-3456789-ABCDEFG-HIJKLMN-OPQRST7
+   +-------------------------------------------------------------+
+   |       claude-code-syncthing  --  Setup Wizard               |
+   +-------------------------------------------------------------+
 
-Current peers in config: 0
+  Platform: linux  host: desktop
 
-Add a peer device now? [y/N]: n
-==> Configuring devices...
-==> Configuring folders...
-    folder claude (POST): HTTP 200
+  This wizard will: install Syncthing, set up autostart, configure
+  sync of ~/.claude, and walk you through pairing other devices.
 
-==> Final state:
-  Devices:
-    - <self>          intro=false auto=false ABCDEFG...
-  Folders:
-    - claude     path=/home/mike/.claude                  sharedWith=1
+  At least one device must be always-on (desktop, Pi, NAS, HAOS).
 
-==> Done.
-    Web UI:        http://127.0.0.1:8384
-    Your Device ID: ABCDEFG-HIJKLMN-OPQRSTU-VWXYZ12-3456789-ABCDEFG-HIJKLMN-OPQRST7
+  Press Enter to continue (or Ctrl-C to abort)
 
-    Next: on the other device(s), run this bootstrap and paste
-    the Device ID above when prompted.
+============================================================
+  PHASE 1/5 -- Pre-flight checks
+============================================================
+
+  ✓ curl
+  ✓ python3
+  ✓ git
+  ✓ sudo
+  ✓ systemctl --user
+
+============================================================
+  PHASE 2/5 -- Install Syncthing
+============================================================
+
+  ✓ Syncthing installed
+
+============================================================
+  PHASE 3/5 -- Configure this device
+============================================================
+
+  Optional: also sync a code/projects directory between devices.
+  (e.g. ~/Desktop/projekte, ~/code -- leave blank to skip)
+  Extra folder path: ~/code
+  ✓ Path exists: /home/mike/code
+  Label for this folder [code]:
+  ✓ /home/mike/.claude/.stignore
+  ✓ /home/mike/code/.stignore
+  ✓ syncthing.service enabled and started
+  Waiting for Syncthing API ✓
+
+============================================================
+  PHASE 4/5 -- Pair with another device
+============================================================
+
+  Your device ID is:
+
+  ABCDEFG-HIJKLMN-OPQRSTU-VWXYZ12-3456789-ABCDEFG-HIJKLMN-OPQRST7
+  (copied to clipboard)
+
+  Add a peer device now? [y/N]: n
+
+============================================================
+  PHASE 5/5 -- Apply Syncthing config
+============================================================
+
+  Configuring folders...
+  ✓ folder claude (post): synced with 0 peer(s)
+  ✓ folder code (post):   synced with 0 peer(s)
+
+============================================================
+  ✓ Setup complete on this device
+============================================================
+
+  This device's ID:  ABCDEFG-HIJKLMN-OPQRSTU-VWXYZ12-3456789-...
+  (also in your clipboard)
+
+  Web UI:        http://127.0.0.1:8384
+  Config file:   /home/mike/claude-code-syncthing/config.env
+
+  Tip: ./scripts/bootstrap.sh --reset to undo. --help for more flags.
 ```
 
-**Copy that Device ID.** You'll need it on the laptop.
+The wizard auto-opens the Web UI in your browser at the end (`--no-browser` to skip).
+
+**Copy the Device ID.** It's already in your clipboard.
 
 ### Step 3 — Clone + bootstrap on the laptop
 
+Same clone command. When the wizard asks "Add a peer device now?" — answer **y** and paste the desktop's Device ID:
+
+```
+  Add a peer device now? [y/N]: y
+
++--- Set up the OTHER device, then come back here: -----------------+
+
+  Linux / macOS / Windows -- clone this repo and run the wizard:
+    [boxes with git clone, cd, bootstrap commands]
+
+  HAOS Pi -- install the Syncthing add-on (UI, no script).
+    -> docs/haos-addon.md
+
+  Either way, the other device will SHOW its Device ID.
+  If asked for YOUR ID, paste: <YOUR LAPTOP ID>
+  (HAOS auto-accepts, no paste needed.)
+
+  Come back here when you have the other device's Device ID.
+
+  Press Enter to continue
+  Other device's ID (or 'done'): ABCDEFG-HIJKLMN-OPQRSTU-VWXYZ12-3456789-ABCDEFG-HIJKLMN-OPQRST7
+  Name for this peer [Peer-1]: Desktop
+  Is this peer always-on (a desktop/Pi that stays running)? [y/N]: y
+  ✓ Added: Desktop (ABCDEFG…) always-on=true
+
+  Add another peer? [y/N]: n
+  ✓ Config saved
+
+  ... [Phase 5 applies, then verifies connection] ...
+
+  ✓ Desktop: connected
+```
+
+If the desktop isn't online, the verification phase warns:
+```
+  ! Desktop: not yet connected (peer must be online and have YOUR ID configured)
+```
+
+That's fine — go back to the desktop and add the laptop's ID.
+
+### Step 4 — Back on the desktop, add the laptop's ID
+
 ```bash
-git clone https://github.com/iceboerg00/claude-code-syncthing.git
-cd claude-code-syncthing
 ./scripts/bootstrap.sh
 ```
 
-When asked "Add a peer device now? [y/N]" — answer **y**.
+Re-running is safe — the wizard recognizes existing peers and just adds new ones.
 
 ```
-Add a peer device now? [y/N]: y
-Peer device ID (or 'done'): ABCDEFG-HIJKLMN-OPQRSTU-VWXYZ12-3456789-ABCDEFG-HIJKLMN-OPQRST7
-Peer name [Peer-1]: Desktop
-Is this peer always-on (relay)? [y/N]: y
-
-Peer device ID (or 'done'): done
-==> Saved peers to /home/mike/claude-code-syncthing/config.env
-==> Configuring devices...
-    device Desktop: HTTP 200
-==> Configuring folders...
-    folder claude (POST): HTTP 200
+  Peers already configured on this device: (none yet)
+  Add a peer device now? [y/N]: y
+  ... [paste laptop ID, name it, mark not-always-on] ...
 ```
 
-The laptop now knows about the desktop, has shared its `claude` folder with the desktop, and will start syncing as soon as the desktop sees the laptop's device ID.
+### Step 5 — Watch sync start
 
-### Step 4 — Go back to the desktop and add the laptop's ID
-
-The laptop's Device ID was printed at the end of its bootstrap. Copy it.
-
-On the desktop, re-run the bootstrap:
-```bash
-./scripts/bootstrap.sh
-```
-
-```
-Add a peer device now? [y/N]: y
-Peer device ID (or 'done'): LAPTOPID-XXXXXXX-XXXXXXX-...
-Peer name [Peer-1]: Laptop
-Is this peer always-on (relay)? [y/N]: n
-
-Peer device ID (or 'done'): done
-```
-
-### Step 5 — Watch the sync start
-
-Open Syncthing's web UI at `http://127.0.0.1:8384` on either device. Within 30–60 seconds the other device should appear with a green "Connected" indicator. The `claude` folder begins syncing.
-
-Initial sync of a heavy `~/.claude/` (3–5 GB) takes 15–60 minutes depending on your network. After that, only deltas flow.
+Web UI on either device shows green "Connected" indicators. The `claude` folder begins syncing — initial sync of a heavy `~/.claude/` (3–5 GB if you've used Claude Code heavily) takes 15–60 minutes.
 
 ---
 
 ## 5. Walkthrough: Scenario B
 
-**Setup:** desktop + laptop + dedicated always-on relay (Raspberry Pi 4/5 with Pi OS, Synology NAS with Linux, mini-PC, or VPS).
+**Setup:** desktop + laptop + dedicated always-on Linux relay (Pi 4/5 with Pi OS, Synology NAS with Syncthing package, mini-PC, or VPS).
 
-### Step 1 — Set up the relay first
+### Step 1 — On the relay first (SSH in)
 
-The relay runs Linux. SSH in:
 ```bash
-ssh user@relay-ip
-```
-
-Clone and bootstrap:
-```bash
+ssh user@relay-host
 git clone https://github.com/iceboerg00/claude-code-syncthing.git
 cd claude-code-syncthing
 ./scripts/bootstrap.sh
 ```
 
-Skip adding peers (`n`) for now — you'll add the desktop and laptop after their bootstraps.
+Skip adding peers (`n`) for now. Copy the **relay's Device ID** from the final output.
 
-**Important:** copy the relay's Device ID from the output. You'll paste this onto every other device.
+### Step 2 — Bootstrap on desktop
 
-### Step 2 — Bootstrap on desktop and laptop
+Same as Scenario A Step 3, but paste the relay's ID and mark it as **always-on**.
 
-Same as Scenario A Step 3, but when adding peers, paste the **relay's** Device ID and mark it as always-on:
+You can also add the laptop's ID at the same time (you'll get it in the next step) — this enables direct sync between desktop and laptop when both are online, falling back to the relay only when one is offline.
 
-```
-Add a peer device now? [y/N]: y
-Peer device ID (or 'done'): RELAY-ID-...
-Peer name [Peer-1]: Relay
-Is this peer always-on (relay)? [y/N]: y
-```
+### Step 3 — Bootstrap on laptop
 
-You can also add the other regular device (desktop adds laptop, laptop adds desktop) so they sync directly when both are online — Syncthing prefers direct connections over routing through the relay.
+Paste the **relay's** ID (always-on=yes). Optionally also the desktop's ID.
 
-### Step 3 — Go back to the relay and add desktop + laptop IDs
+### Step 4 — Back on the relay, add desktop + laptop IDs
 
 ```bash
-ssh user@relay-ip
+ssh user@relay-host
 cd claude-code-syncthing
 ./scripts/bootstrap.sh
 ```
 
-Add both, mark them as not always-on (they're regular devices).
+When prompted, add both. Mark them as not-always-on.
 
-### Step 4 — Open Syncthing UIs and verify
+### Step 5 — Verify
 
-On each device, open `http://127.0.0.1:8384` (or `ssh -L 8384:127.0.0.1:8384 user@relay-ip` to tunnel the relay's UI). All three devices should show as connected within a minute.
+To see the relay's Web UI from your desktop without exposing the port:
+```bash
+ssh -L 8384:127.0.0.1:8384 user@relay-host
+# then open http://127.0.0.1:8384 in your browser
+```
 
-### Step 5 — Storage check on the relay
+All three devices should show "Connected" within 60s.
 
-The relay will hold a full copy of `~/.claude/` (3–5 GB typical). Make sure there's headroom plus space for trash-can versioning (up to ~2× the live size over time).
+### Storage check
 
+The relay holds full copies of synced folders. Plus trash-can versioning (~2× the live size over 7 days). Verify free space:
 ```bash
 df -h ~
 ```
-
-If you set `EXTRA_SYNC_DIR` in `config.env` to also sync a code directory, factor in that size too.
 
 ---
 
 ## 6. Walkthrough: Scenario C
 
-**Setup:** desktop + laptop + a Raspberry Pi 4/5 running Home Assistant OS.
+**Setup:** desktop + laptop + Pi 4/5 running Home Assistant OS.
 
-**Order matters here:** the HAOS Pi is the always-on device, so it's the **anchor**. You set it up first, get its Device ID, then the other devices paste that ID as their always-on peer. The bootstrap scripts cannot drive HAOS (no SSH access to the add-on), so the Pi side is UI clicks.
+The HAOS Pi is the always-on anchor. **It must be set up first**, because the wizard cannot reach into HAOS — you do it via the HA web UI.
 
-HAOS doesn't let you SSH and `apt install` like normal Linux. You install Syncthing as a **Home Assistant add-on** instead.
-
-→ Full instructions in [`haos-addon.md`](haos-addon.md). The short version:
+→ Full add-on instructions: [`haos-addon.md`](haos-addon.md)
 
 ### Step 1 — On the HAOS Pi (do this FIRST)
 
-1. In HA: Settings → Add-ons → Add-on Store → top-right menu → Repositories → paste `https://github.com/Poeschl-HomeAssistant-Addons/repository`
-2. Install the **Syncthing** add-on, start it, open the Web UI
-3. Note the Pi's Device ID (Actions → Show ID) — **copy it, you'll need it on every other device**
-4. Create two folders in the Pi's Syncthing UI:
+1. HA → Settings → Add-ons → Add-on Store → top-right menu → Repositories
+2. Add: `https://github.com/Poeschl-HomeAssistant-Addons/repository`
+3. Install the **Syncthing** add-on, start it, open the Web UI
+4. Note the Pi's Device ID (Actions → Show ID) — **needed on every other device**
+5. Create folders in the Pi's Syncthing UI:
    - Folder ID `claude`, path `/share/claude`, ignore patterns from [`../templates/stignore-claude`](../templates/stignore-claude), versioning Trash Can 14 days
-   - (Optional) Folder ID matching your `EXTRA_SYNC_LABEL` (default `code`), path `/share/code`, ignore patterns from [`../templates/stignore-extra`](../templates/stignore-extra)
+   - (Optional) Folder ID matching your `EXTRA_SYNC_LABEL` (default `code`), path `/share/code`, ignore from [`../templates/stignore-extra`](../templates/stignore-extra)
 
 ### Step 2 — On the desktop, then the laptop
 
-1. Clone this repo and run the bootstrap (`./scripts/bootstrap.sh` or `.\scripts\bootstrap.ps1`).
-2. When prompted "Add a peer device now?" answer **y**.
-3. Paste the **Pi's Device ID** (from Step 1.3), name it (e.g. `HA-Pi`), mark **always-on = yes**.
-
-Repeat on the laptop. Each non-Pi device that connects to the Pi gets auto-shared the folders (because both sides match by Folder ID).
+Run the wizard. When prompted to add a peer, paste the **Pi's Device ID**, mark as always-on. The wizard registers Pi as a Syncthing introducer.
 
 ### Step 3 — Back on the HAOS Pi
 
-After each non-Pi device boots its Syncthing for the first time, the Pi UI shows a *"device wants to connect"* notification. Accept each. Folder shares auto-match by ID — no manual folder-accept needed.
+After each non-Pi device's first sync attempt, the Pi UI shows *"device wants to connect"* notifications — accept each. Folder shares auto-match by ID, no manual folder accept needed.
 
 ---
 
 ## 7. Verifying your install
 
-Run these checks on each device after bootstrap:
+### Wizard verification (automatic)
 
-### Syncthing is running
+After Phase 5 applies the config, the wizard polls for 30s and reports:
+```
+  Waiting for peers to come online (up to 30s)...
+  ✓ Desktop: connected
+  ✓ Pi-HA: connected
+```
 
-Linux:
+Or if a peer isn't reachable yet:
+```
+  ! Desktop: not yet connected (peer must be online and have YOUR ID configured)
+```
+
+### Manual checks
+
+**Syncthing process:**
 ```bash
-systemctl --user status syncthing
+systemctl --user status syncthing       # Linux
+brew services list | grep syncthing     # macOS
+Get-Process syncthing                   # Windows
 ```
-Expected: `Active: active (running)`.
 
-macOS:
-```bash
-brew services list | grep syncthing
-```
-Expected: `started`.
-
-Windows:
-```powershell
-Get-Process syncthing
-```
-Expected: a non-empty result with a PID.
-
-### Web UI is reachable
-
+**API:**
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8384
+# expect: 200
 ```
-Expected: `200`.
 
-### Devices are configured
+**Web UI** at `http://127.0.0.1:8384`:
+- Remote Devices panel shows your peers green
+- Folders panel shows `claude` (and optional extra) shared with all peers
+- Folder summary line says "Up to Date" once initial sync completes
 
-Open `http://127.0.0.1:8384` in a browser. You should see:
-- Your peers in the **Remote Devices** panel (right side)
-- The `claude` folder in the **Folders** panel (left side), shared with all peers
-- Connection state on each peer: ideally green "Connected"
-
-### Sync is making progress
-
-The folder summary line shows "Up to Date" once all peers have the same content. During initial sync it shows transfer progress and ETA.
-
-If a peer is "Disconnected" but you expect it to be online:
-- Both devices must be running Syncthing simultaneously for the very first handshake
-- Wait 30–60 seconds for discovery to find them
-- Check firewalls (TCP/UDP 22000 inbound on the always-on relay if it sits behind NAT)
-
-### `.stignore` is in place
-
+**.stignore is in place:**
 ```bash
-ls -la ~/.claude/.stignore   # Linux/macOS
+ls -la ~/.claude/.stignore
 ```
-Should exist and contain the patterns from `templates/stignore-claude`.
 
 ---
 
@@ -403,63 +427,102 @@ Should exist and contain the patterns from `templates/stignore-claude`.
 
 Run the bootstrap on the new device, paste any existing peer's Device ID, mark always-on if relevant.
 
-If you set an existing always-on peer as **introducer** during its bootstrap (the script does this automatically for `always-on=true` peers), then once the new device connects to the introducer, all the other peers known to the introducer get added to the new device's config automatically. You don't have to manually paste every existing peer's ID on the new device.
-
-To make this work in reverse (existing devices auto-add the new device), re-run the bootstrap on the introducer device and paste the new device's ID there too.
+If you set an existing always-on peer as **introducer** during its bootstrap (the wizard does this automatically for `always-on=true` peers), then once the new device connects to the introducer, all other peers known to the introducer get auto-added to the new device's config. You don't have to paste every existing peer's ID.
 
 ---
 
-## 9. Common first-run issues
+## 9. Optional hardening
+
+### Set a GUI password
+
+Default Syncthing binds to `127.0.0.1:8384` — only local browsers can reach it. For defense-in-depth (especially if you ever expose the port via Tailscale or a reverse proxy):
+
+1. Open `http://127.0.0.1:8384`
+2. Actions → Settings → GUI tab
+3. Fill **GUI Authentication User** and **Password**
+4. Save (Syncthing restarts)
+
+Repeat on each device. The wizard does NOT set this — it's a manual choice per device.
+
+(HAOS doesn't need this — the add-on is exposed only via HA's Ingress, which has its own auth.)
+
+### Force Tailscale-only sync
+
+If all devices are on Tailscale, you can pin Syncthing to use Tailscale IPs only (no relays, no public discovery):
+
+1. In each device's Web UI: Edit Remote Device → Advanced
+2. Set **Addresses** to `tcp://<peer-tailscale-ip>:22000`
+
+Now even on hostile networks, sync only goes over your Tailnet.
+
+---
+
+## 10. Common first-run issues
 
 ### "Permission denied" running the bootstrap
 
-Linux/macOS: the `.sh` script must be executable. After `git clone`:
+Linux/macOS:
 ```bash
 chmod +x scripts/bootstrap.sh scripts/link-claude-projects.sh
 ```
 
-Windows: PowerShell may block unsigned scripts. From an elevated PowerShell:
+Windows: PowerShell may block unsigned scripts.
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
-Or run with `-ExecutionPolicy Bypass`:
-```powershell
+# or one-shot:
 powershell.exe -ExecutionPolicy Bypass -File .\scripts\bootstrap.ps1
 ```
 
-### "winget: command not found" on Windows
+### "winget: command not found"
 
-Install "App Installer" from the Microsoft Store, or download the latest from <https://github.com/microsoft/winget-cli/releases>.
+Install **App Installer** from the Microsoft Store.
 
-### Syncthing API returns 401 / config.xml has no apikey
+### Syncthing API returns nothing / `apikey` empty
 
-This happens if you started Syncthing once, then ran the bootstrap before the first run had finished initializing. Restart Syncthing once and re-run the bootstrap:
+Means Syncthing started but didn't finish initializing config. Restart it once and re-run:
 ```bash
 systemctl --user restart syncthing && sleep 5
 ./scripts/bootstrap.sh
 ```
 
-### `claude --resume` shows no sessions on Linux even after sync
+### `claude --resume` shows no sessions on Linux after sync
 
-This is the cross-platform symlink issue. The bootstrap runs `link-claude-projects.sh` automatically if it sees Windows-named folders. If you skipped that step or sync brought new folders since:
+The cross-platform symlink trick wasn't applied. The bootstrap runs it automatically when it sees Windows-named folders, but if new ones appeared since:
 ```bash
 ./scripts/link-claude-projects.sh
 ```
 
 ### Sync stuck at 99%
 
-The active session jsonl is being written by Claude Code right now. Close Claude on this device and the percent jumps to 100%. Other devices then pull the final bytes. See [troubleshooting.md](troubleshooting.md) for other causes.
+The active session jsonl is being written by Claude right now. Close Claude on this device — the percent jumps to 100%. Other devices then pull the final bytes. See [troubleshooting.md](troubleshooting.md).
 
-### Files appear with `.sync-conflict-…` suffixes
+### "Dropping index entry containing invalid path separator" in the log
 
-Two devices wrote to the same file simultaneously. Recover one version, delete the other. The default Trash-can versioning keeps older copies under `~/.claude/.stversions/` for 7 days. To avoid the issue: only have Claude Code open on one device at a time, and let Syncthing reach green ("Up to Date") before switching.
+A file with a backslash in its name was created on Linux/macOS, and Windows can't represent that. Find and delete on the Linux side:
+```bash
+find ~/.claude ~/Desktop -name '*\\*' 2>/dev/null
+```
+Then `rm` what you find. Sync clears up on next rescan.
+
+### Self-paste detection trips
+
+If you accidentally pasted your own Device ID as a peer, the wizard warns and refuses. Re-enter the OTHER device's ID. (Self ID is at the top of Phase 4 output and in your clipboard.)
+
+### Want to start over?
+
+```bash
+./scripts/bootstrap.sh --reset    # Linux/macOS
+.\scripts\bootstrap.ps1 -Reset    # Windows
+```
+
+Removes peer entries, folder shares, and `config.env`. Syncthing stays installed; your `~/.claude/` data is untouched. Re-run the wizard fresh.
 
 ---
 
 ## What's next
 
-- Read [troubleshooting.md](troubleshooting.md) for ongoing operational issues
-- For the HAOS-specific setup details, see [haos-addon.md](haos-addon.md)
-- The `config.env` is gitignored — back it up separately if you want to redeploy elsewhere with the same peer list
+- Day-to-day operations and recovery: [`troubleshooting.md`](troubleshooting.md)
+- All flags and env vars: [`cli-reference.md`](cli-reference.md)
+- HAOS-specific: [`haos-addon.md`](haos-addon.md)
 
-If you hit something not covered here, open an issue on the repo.
+If you hit something not covered, open an issue.

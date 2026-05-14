@@ -1,67 +1,36 @@
 # claude-code-syncthing
 
-Sync your Claude Code state (`~/.claude/`) — sessions, skills, custom hooks, plans — across multiple devices using [Syncthing](https://syncthing.net/). Live, P2P, end-to-end encrypted, no cloud account required.
+> Sync your [Claude Code](https://claude.com/claude-code) state — sessions, skills, custom hooks, plans — across all your devices using [Syncthing](https://syncthing.net/). Live, P2P, end-to-end encrypted, no cloud account.
 
-> **Requirement:** At least **one device must be always-on**. Syncthing is peer-to-peer — if devices never overlap online, nothing syncs. A desktop that you leave running, a NAS, a Pi, a VPS — anything that's reachable when your laptop comes back from a trip.
-
----
-
-## Why this exists
-
-Claude Code stores session history, custom skills, plans and tasks under `~/.claude/`. By default this is per-machine. You start a chat on your desktop, take your laptop to a café, run `claude --resume` — and find nothing. This project sets up Syncthing so all your devices share one logical `~/.claude/` (with sane exclusions for caches and platform-specific settings).
-
-Optional: also sync a code directory like `~/code/` or `~/Desktop/projekte/` between devices.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#)
 
 ---
 
-## Scenarios
+## What this gives you
 
-### Scenario A — Two devices, one always-on (recommended for solo devs)
+- Open Claude Code on your desktop, take your laptop to a café, run `claude --resume` — your full session history is there.
+- Skills, plans, custom hooks, agents stay in sync.
+- Optional: also sync a code/projects directory between devices.
+- Cross-platform: Windows, macOS, Linux, Raspberry Pi OS, Home Assistant OS (as a relay).
 
-```
-[Desktop, always-on]  <-- direct sync -->  [Laptop, mobile]
-```
+## What this is not
 
-Your desktop stays on. Laptop comes and goes. When laptop is home or anywhere with internet, it syncs to desktop directly. No relay needed if both are on Tailscale or you have port-forwarding for the desktop.
-
-### Scenario B — Two devices + one always-on relay (NAS, Pi, VPS)
-
-```
-[Desktop, mobile]                       [Laptop, mobile]
-        \                                       /
-         \--> [Pi / NAS / VPS, always-on] <----/
-```
-
-Use this if **neither** of your main devices is always-on. The relay (Raspberry Pi, Synology NAS, cheap VPS) holds the latest state 24/7. Each device syncs against it whenever it comes online.
-
-### Scenario C — Three devices including a Home Assistant Pi as relay
-
-```
-[Desktop]      [Laptop]      [Pi running HAOS, always-on]
-       \           |           /
-        \----------+----------/
-              (Syncthing add-on)
-```
-
-Same idea as B, but the always-on node is a Pi running Home Assistant OS. You install the Syncthing add-on from a community repository — see [`docs/haos-addon.md`](docs/haos-addon.md).
+- Not a cloud backup. Sync is peer-to-peer. If all your devices die at once, your data dies with them. (Syncthing's trash-can versioning gives you a 7-day local recovery buffer.)
+- Not a way to run Claude Code itself remotely. Each device runs its own Claude — they just share state.
+- Not a replacement for git. Code projects belong in git; this layer just convenient-syncs work-in-progress files.
 
 ---
 
-## ⚡ Quick Start
+## Requirement: at least one always-on device
 
-> **Detailed walkthrough:** [docs/installation.md](docs/installation.md) — prerequisites per platform, scenario-by-scenario steps, expected output, verification checks.
+Syncthing is P2P. If two devices never overlap online, no sync happens. So **one of your devices must be always-on**: a desktop you leave running, a Raspberry Pi, a NAS, a small VPS, or a Home Assistant instance.
 
-### Recommended order
+If neither your desktop nor your laptop is always-on, add a third low-power node (Pi 4, Synology, $3/mo VPS — anything Linux). It holds the latest state 24/7 and lets the others come and go.
 
-Always **start on your always-on device** — the others paste its Device ID as their always-on peer.
+---
 
-| Scenario | Start here | Then |
-|---|---|---|
-| **A** (2 devices, desktop always-on) | Desktop | Laptop |
-| **B** (3 devices, dedicated Pi/NAS/VPS relay) | Relay (SSH in) | Desktop, then laptop |
-| **C** (3 devices, HAOS Pi as relay) | HAOS Pi via [add-on UI](docs/haos-addon.md) | Desktop, then laptop |
-
-The script (or HAOS add-on UI) prints the device's ID at the end. Copy it and paste on the next device.
+## Quick Start
 
 ### 1. Clone
 
@@ -70,81 +39,100 @@ git clone https://github.com/iceboerg00/claude-code-syncthing.git
 cd claude-code-syncthing
 ```
 
-### 2. Run the bootstrap on each device
+### 2. Run the wizard on each device
 
-**Linux / macOS / WSL / Raspberry Pi OS:**
-```bash
-./scripts/bootstrap.sh
-```
+| Platform | Command |
+|---|---|
+| Linux / macOS / WSL / Pi OS | `./scripts/bootstrap.sh` |
+| Windows (PowerShell) | `.\scripts\bootstrap.ps1` |
+| Home Assistant OS | UI clicks — see [`docs/haos-addon.md`](docs/haos-addon.md) |
 
-**Windows (PowerShell):**
-```powershell
-.\scripts\bootstrap.ps1
-```
+The wizard installs Syncthing, sets up autostart, configures `~/.claude` as a synced folder, then walks you through pairing with your other devices.
 
-**Home Assistant OS:** see [`docs/haos-addon.md`](docs/haos-addon.md) — needs UI clicks, not scriptable from outside.
+### 3. Recommended order
 
-The bootstrap script does:
-1. Install Syncthing if missing
-2. Configure autostart (systemd user / Scheduled Task / brew services)
-3. Prompt for peer device IDs on first run (saved to `config.env`, gitignored)
-4. Use Syncthing's REST API to register peers + create folders with sane defaults (versioning Trash 7d, smart ignore patterns)
-5. Cross-platform helper: symlinks Linux/macOS-named Claude project folders to Windows-named ones so `claude --resume` works after syncing from a Windows machine
+Always **start on your always-on device** — its Device ID becomes the anchor that all other devices register as a peer.
 
-### 3. Repeat on each device
+| Scenario | First | Then |
+|---|---|---|
+| **A** — 2 devices, desktop always-on | Desktop | Laptop |
+| **B** — 3 devices, dedicated Pi/NAS/VPS relay | The relay (SSH in) | Desktop, then laptop |
+| **C** — 3 devices, HAOS Pi as relay | HAOS Pi (UI) | Desktop, then laptop |
 
-Each device shows its own Device ID at the end of the bootstrap. Pass them around — or paste them in when prompted on each new device. See the [installation guide](docs/installation.md#4-walkthrough-scenario-a) for the exact prompts and what to enter for your scenario.
+Each device's wizard prints its Device ID at the end. The next device's wizard asks for that ID.
+
+→ Full step-by-step with sample outputs: [`docs/installation.md`](docs/installation.md)
 
 ---
 
-## What gets synced (and what doesn't)
+## Wizard flags
 
-**Synced from `~/.claude/`:**
-- `projects/` — your session histories (the main reason for this project)
-- `skills/` — custom skills you created
-- `plans/`, `tasks/` — work-in-progress files
-- `agents/` (if present) — custom agent definitions
+```
+--reset       remove peer devices + folder shares + config.env (Syncthing stays)
+--yes / -y    non-interactive (read everything from config.env)
+--no-browser  don't auto-open the Web UI at the end
+--help        usage
+```
 
-**NOT synced:**
-- `settings.json` — paths differ per platform
+PowerShell uses PascalCase flags: `-Reset`, `-Yes`, `-NoBrowser`, `-Help`.
+
+→ Full reference: [`docs/cli-reference.md`](docs/cli-reference.md)
+
+---
+
+## What's synced
+
+From `~/.claude/`:
+- `projects/` — session histories (the main reason for this project)
+- `skills/`, `plans/`, `tasks/`, `agents/` — your work-in-progress
+- `history.jsonl`, `CLAUDE.md` — global instructions / shell history
+
+Not synced (per [`templates/stignore-claude`](templates/stignore-claude)):
+- `settings.json` — paths differ per platform; you maintain it per-device
 - `cache/`, `paste-cache/`, `shell-snapshots/`, `session-env/`, `telemetry/`, `debug/`, `downloads/`, `backups/` — volatile per-device
-- Platform-specific symlinks (some plugin marketplaces use OS-specific symlinks that break cross-platform)
+- Plugin/skill symlinks that don't survive Windows ↔ Linux (NTFS vs ext4 differences)
 
-See [`templates/stignore-claude`](templates/stignore-claude) for the full ignore list.
+Optional: a code/projects directory you specify during setup. Defaults to no extra folder.
 
 ---
 
-## ⚠️ Important gotchas
+## Important gotchas
 
-### 1. Don't run Claude Code on two devices simultaneously
-Both will write to the same `<session>.jsonl` file at once → Syncthing creates `.sync-conflict-*` files. Workflow: close Claude on device A, wait for green status in Syncthing, then open on device B.
+### Don't run Claude Code on two devices simultaneously
+Both devices will write to the same `<session>.jsonl` — Syncthing creates `.sync-conflict-*` files. Workflow: close Claude on device A, wait for green status, then open on device B.
 
-### 2. `settings.json` is per-device
-Paths like `C:\Users\Mike\.claude\statusline.js` don't exist on Linux. Maintain your settings per platform — don't try to share the file. The bootstrap script does NOT touch your existing `settings.json`.
+### `settings.json` is per-device
+Paths like `C:\Users\Mike\.claude\statusline.js` don't exist on Linux. The wizard does NOT touch your existing `settings.json`. If you have one with hooks/statusLine, maintain a copy per platform yourself.
 
-### 3. Cross-platform Claude session resume needs symlinks
-Claude derives the project folder name from the absolute pwd:
-- Windows: `C--Users-Mike-Desktop-myproject` 
+### Cross-platform Claude project folder names
+Claude derives `~/.claude/projects/<id>/` from the absolute pwd:
+- Windows: `C--Users-Mike-Desktop-myproject`
 - Linux:   `-home-mike-Desktop-myproject`
 
-The bootstrap creates symlinks on Linux to make sessions visible. See [`scripts/link-claude-projects.sh`](scripts/link-claude-projects.sh).
+After syncing from Windows, the bootstrap on Linux/macOS automatically creates symlinks (Linux-name → Windows-name) so `claude --resume` finds existing sessions. Re-run the bootstrap if new project folders appear later.
 
-### 4. Plugin symlinks may not survive Win ↔ Linux
-Some skill installers create symlinks (e.g. `skills/impeccable -> ~/.agents/skills/impeccable`). NTFS handles these differently than ext4. The stignore template excludes the known offenders.
+### Plugin symlinks may break across OS
+Some plugin/skill installers create symlinks (e.g. `skills/impeccable -> ~/.agents/skills/impeccable`). NTFS handles those differently than ext4 → sync errors. The default ignore patterns exclude the known offenders; add your own to `~/.claude/.stignore` if you hit new ones.
 
 ---
 
 ## Outside your home network
 
-Syncthing has Global Discovery + Relay enabled by default. Your laptop in a café will find your home Pi via the public Syncthing discovery servers, and connect either directly (if your home router does UPnP / port forwarding for 22000) or via Syncthing's free relays (~100 KB/s, slow but works).
+Syncthing's **Global Discovery + Relays** are enabled by default. Your laptop in a café finds your home Pi via public discovery servers and connects either directly (if your home router does UPnP / port-forwarding for 22000) or via Syncthing's free relays (~100 KB/s, slow but works).
 
-**For best results:** install [Tailscale](https://tailscale.com) on all devices. Then Syncthing connects via stable Tailscale IPs, no port forwarding, no relay. Free for personal use up to 100 devices.
+For best results: install [Tailscale](https://tailscale.com) on all your devices. Syncthing then connects via stable Tailscale IPs — no port-forwarding, no relay, full speed. Free for personal use up to 100 devices.
 
 ---
 
 ## Troubleshooting
 
-See [`docs/troubleshooting.md`](docs/troubleshooting.md).
+Common issues and fixes: [`docs/troubleshooting.md`](docs/troubleshooting.md).
+
+When in doubt, the nuclear option:
+```bash
+./scripts/bootstrap.sh --reset    # or .\scripts\bootstrap.ps1 -Reset
+```
+This removes peer devices, folder shares, and `config.env`. Syncthing stays installed; your `~/.claude/` data is untouched. Re-run the wizard to set up clean.
 
 ---
 
