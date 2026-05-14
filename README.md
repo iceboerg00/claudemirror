@@ -103,7 +103,8 @@ The wizard asks for a path (e.g. `~/Desktop/projekte`, `~/code`). If you provide
 |---|---|
 | Source files, configs, docs, READMEs | `node_modules/`, `.next/`, `.nuxt/`, `dist/`, `build/`, `target/`, `.dart_tool/` |
 | Lockfiles (`package-lock.json` etc.) | `__pycache__/`, `.venv/`, `.pytest_cache/`, `.ruff_cache/` |
-| `.gitignore`, `.editorconfig` etc. | `.env`, `.env.*`, `*.pem`, `*.key` — secrets never sync |
+| `.gitignore`, `.editorconfig` etc. | `*.pem`, `*.key` — keys/certs stay device-local |
+| `.env` files (synced by default) | |
 | | `.idea/`, `.vscode/`, `*.swp` — IDE state |
 | | `.DS_Store`, `Thumbs.db`, build logs |
 
@@ -118,7 +119,8 @@ Most "excluded" items are things you **don't need to sync** because they regener
 | `node_modules/`, `.venv/`, `dist/`, `build/`, `target/`, `.dart_tool/` | Often huge (hundreds of MB to GBs); contain platform-specific binaries (Linux `.so` ≠ Windows `.dll`); changes constantly during development | Source files + lockfiles **are** synced. Run `npm install` / `pip install -r requirements.txt` / `cargo build` once on the other device — same env in 30s |
 | `__pycache__/`, `.pytest_cache/`, `.ruff_cache/` | Regenerated automatically | Just run your code/tests, they rebuild instantly |
 | `.idea/`, `.vscode/` (workspace state, not project settings) | Per-machine UI state (window positions, breakpoints, recent files) | Re-open the project — IDE figures it out |
-| `.env`, `*.pem`, `*.key` | Security default — secrets shouldn't sync casually | If you DO want them synced, edit `~/Desktop/<your-folder>/.stignore` and remove those lines. Or use a dedicated secrets manager. |
+| `*.pem`, `*.key` | Cryptographic keys / certs are device-specific and a higher-stakes leak target | Generate / install per device, or use a dedicated secrets manager |
+| `.env` files | **Not excluded by default** — synced like other source files | If you keep production secrets in `.env`, add it to your folder's `.stignore` to opt out per-device |
 | `.DS_Store`, `Thumbs.db` | OS-specific file-system metadata, no value cross-platform | Generated automatically by Finder/Explorer when you open the folder |
 
 **Customize:** the `.stignore` file in each synced folder is just a text file — edit it on any device and Syncthing picks up the change automatically. Add patterns to exclude more, or remove lines to sync things the defaults skip.

@@ -43,12 +43,14 @@ vendor
 *.log
 *.sqlite-journal
 
-// Env / secrets — NEVER sync these
-.env
-.env.local
-.env.*.local
+// Cryptographic keys / certs (never sync)
 *.pem
 *.key
+
+// .env files: NOT excluded by default. They're per-project config that's
+// useful to have on every device you work from. Add `.env` to this file
+// if you store production secrets in there and don't want them on every
+// machine. (Lockfiles / source code are synced regardless.)
 
 // IDE
 .idea
