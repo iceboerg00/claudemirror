@@ -146,7 +146,3 @@ This removes peer devices, folder shares, and `config.env`. Syncthing stays inst
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
-
-## Credits
-
-Inspired by [tawanorg/claude-sync](https://github.com/tawanorg/claude-sync) (cloud-bucket approach) and the [Poeschl HA add-ons](https://github.com/Poeschl-HomeAssistant-Addons/repository) project. This implementation favours Syncthing P2P over cloud storage for users who want no third-party dependency and live (rather than push/pull) sync.
