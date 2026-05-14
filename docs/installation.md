@@ -139,8 +139,8 @@ No script — the wizard cannot reach into HAOS. You install Syncthing as a comm
 ### Step 1 — Clone on the desktop
 
 ```bash
-git clone https://github.com/iceboerg00/claude-code-syncthing.git
-cd claude-code-syncthing
+git clone https://github.com/iceboerg00/claudemirror.git
+cd claudemirror
 ```
 
 ### Step 2 — Run the wizard
@@ -158,7 +158,7 @@ Sample output (5 phases):
 
 ```
    +-------------------------------------------------------------+
-   |       claude-code-syncthing  --  Setup Wizard               |
+   |       claudemirror  --  Setup Wizard               |
    +-------------------------------------------------------------+
 
   Platform: linux  host: desktop
@@ -227,7 +227,7 @@ Sample output (5 phases):
   (also in your clipboard)
 
   Web UI:        http://127.0.0.1:8384
-  Config file:   /home/USER/claude-code-syncthing/config.env
+  Config file:   /home/USER/claudemirror/config.env
 
   Tip: ./scripts/bootstrap.sh --reset to undo. --help for more flags.
 ```
@@ -306,8 +306,8 @@ Web UI on either device shows green "Connected" indicators. The `claude` folder 
 
 ```bash
 ssh user@relay-host
-git clone https://github.com/iceboerg00/claude-code-syncthing.git
-cd claude-code-syncthing
+git clone https://github.com/iceboerg00/claudemirror.git
+cd claudemirror
 ./scripts/bootstrap.sh
 ```
 
@@ -327,7 +327,7 @@ Paste the **relay's** ID (always-on=yes). Optionally also the desktop's ID.
 
 ```bash
 ssh user@relay-host
-cd claude-code-syncthing
+cd claudemirror
 ./scripts/bootstrap.sh
 ```
 

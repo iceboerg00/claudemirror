@@ -1,4 +1,4 @@
-# claude-code-syncthing
+# claudemirror
 
 > Sync your [Claude Code](https://claude.com/claude-code) **state** (sessions, skills, plans, agents, plugins) **and your project folders** across all your devices using [Syncthing](https://syncthing.net/). Live, P2P, end-to-end encrypted, no cloud account.
 
@@ -36,8 +36,8 @@ If neither your desktop nor your laptop is always-on, add a third low-power node
 ### 1. Clone
 
 ```bash
-git clone https://github.com/iceboerg00/claude-code-syncthing.git
-cd claude-code-syncthing
+git clone https://github.com/iceboerg00/claudemirror.git
+cd claudemirror
 ```
 
 ### 2. Run the wizard on each device

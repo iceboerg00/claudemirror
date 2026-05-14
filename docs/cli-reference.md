@@ -175,8 +175,8 @@ The wizard prefers warnings + "continue?" prompts over hard exits, so most non-f
 
 ### Fresh setup on first device
 ```bash
-git clone https://github.com/iceboerg00/claude-code-syncthing.git
-cd claude-code-syncthing
+git clone https://github.com/iceboerg00/claudemirror.git
+cd claudemirror
 ./scripts/bootstrap.sh
 ```
 

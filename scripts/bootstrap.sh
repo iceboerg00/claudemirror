@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CONFIG_FILE="$REPO_ROOT/config.env"
 EXAMPLE_FILE="$REPO_ROOT/config.example.env"
-REPO_URL="https://github.com/iceboerg00/claude-code-syncthing.git"
+REPO_URL="https://github.com/iceboerg00/claudemirror.git"
 
 # ---------- arg parsing ----------
 
@@ -174,7 +174,7 @@ cat <<'EOF'
 
    ┌─────────────────────────────────────────────────────────────┐
    │                                                             │
-   │       claude-code-syncthing  —  Setup Wizard                │
+   │       claudemirror  —  Setup Wizard                │
    │                                                             │
    │   Sync your Claude Code state across multiple devices,      │
    │   peer-to-peer, no cloud account.                           │
@@ -333,7 +333,7 @@ if confirm "Add a peer device now?"; then
 
   banner "Set up the OTHER device, then come back here:"
   echo "  ${BOLD}Linux / macOS / Windows${RESET} -- clone this repo and run the wizard:"
-  box_command "git clone $REPO_URL && cd claude-code-syncthing"
+  box_command "git clone $REPO_URL && cd claudemirror"
   echo "  ${DIM}then:${RESET}"
   box_command "./scripts/bootstrap.sh           (Linux/macOS)"
   box_command ".\\scripts\\bootstrap.ps1        (Windows)"

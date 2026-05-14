@@ -23,7 +23,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot  = Split-Path -Parent $ScriptDir
 $ConfigFile  = Join-Path $RepoRoot "config.env"
 $ExampleFile = Join-Path $RepoRoot "config.example.env"
-$RepoUrl     = "https://github.com/iceboerg00/claude-code-syncthing.git"
+$RepoUrl     = "https://github.com/iceboerg00/claudemirror.git"
 
 if ($Help) {
     @"
@@ -182,7 +182,7 @@ Clear-Host
 Write-Host ""
 Write-Host "   +-------------------------------------------------------------+" -ForegroundColor Cyan
 Write-Host "   |                                                             |" -ForegroundColor Cyan
-Write-Host "   |       claude-code-syncthing  --  Setup Wizard               |" -ForegroundColor Cyan
+Write-Host "   |       claudemirror  --  Setup Wizard               |" -ForegroundColor Cyan
 Write-Host "   |                                                             |" -ForegroundColor Cyan
 Write-Host "   |   Sync your Claude Code state across multiple devices,      |" -ForegroundColor Cyan
 Write-Host "   |   peer-to-peer, no cloud account.                           |" -ForegroundColor Cyan
@@ -344,7 +344,7 @@ if (Confirm-YesNo "Add a peer device now?") {
     Write-Host "  Linux / macOS / Windows -- clone this repo and run the wizard:"
     Box-Command "git clone $RepoUrl"
     Write-Host ""
-    Box-Command "cd claude-code-syncthing"
+    Box-Command "cd claudemirror"
     Write-Host ""
     Write-Host "  On Linux/macOS:" -ForegroundColor DarkGray
     Box-Command "./scripts/bootstrap.sh"
