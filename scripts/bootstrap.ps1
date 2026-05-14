@@ -1,7 +1,21 @@
 # bootstrap.ps1 -- guided wizard for Windows / PowerShell
 # Sets up Syncthing-based sync of ~/.claude across devices.
-# Re-runnable: each invocation can add more peers.
-# ASCII-only (works on Windows PowerShell 5.1 default encoding).
+#
+# Usage:
+#   .\scripts\bootstrap.ps1                  -- interactive wizard (default)
+#   .\scripts\bootstrap.ps1 -Reset           -- remove peer devices + folder shares + config.env
+#   .\scripts\bootstrap.ps1 -Yes             -- non-interactive (read everything from config.env)
+#   .\scripts\bootstrap.ps1 -NoBrowser       -- don't auto-open Web UI at the end
+#   .\scripts\bootstrap.ps1 -Help
+
+[CmdletBinding()]
+param(
+    [switch]$Reset,
+    [Alias("y","NonInteractive")]
+    [switch]$Yes,
+    [switch]$NoBrowser,
+    [switch]$Help
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -10,6 +24,18 @@ $RepoRoot  = Split-Path -Parent $ScriptDir
 $ConfigFile  = Join-Path $RepoRoot "config.env"
 $ExampleFile = Join-Path $RepoRoot "config.example.env"
 $RepoUrl     = "https://github.com/iceboerg00/claude-code-syncthing.git"
+
+if ($Help) {
+    @"
+Usage:
+  .\scripts\bootstrap.ps1                  -- interactive wizard (default)
+  .\scripts\bootstrap.ps1 -Reset           -- remove peer devices + folder shares + config.env
+  .\scripts\bootstrap.ps1 -Yes             -- non-interactive (read everything from config.env)
+  .\scripts\bootstrap.ps1 -NoBrowser       -- don't auto-open Web UI at the end
+  .\scripts\bootstrap.ps1 -Help            -- this message
+"@ | Write-Host
+    exit 0
+}
 
 # ---------- presentation helpers ----------
 
@@ -36,79 +62,35 @@ function Box-Command($cmd) {
     Write-Host "  |" -ForegroundColor Cyan
     Write-Host "  +$line+" -ForegroundColor Cyan
 }
-function Ok($msg)    { Write-Host "  [OK]   " -NoNewline -ForegroundColor Green; Write-Host $msg }
-function Note($msg)  { Write-Host "         $msg" -ForegroundColor DarkGray }
-function Warn($msg)  { Write-Host "  [WARN] " -NoNewline -ForegroundColor Yellow; Write-Host $msg }
-function Fail($msg)  { Write-Host "  [FAIL] " -NoNewline -ForegroundColor Red; Write-Host $msg; exit 1 }
+function Ok($msg)   { Write-Host "  [OK]   " -NoNewline -ForegroundColor Green; Write-Host $msg }
+function Note($msg) { Write-Host "         $msg" -ForegroundColor DarkGray }
+function Warn($msg) { Write-Host "  [WARN] " -NoNewline -ForegroundColor Yellow; Write-Host $msg }
+function Fail($msg) { Write-Host "  [FAIL] " -NoNewline -ForegroundColor Red; Write-Host $msg; exit 1 }
 
 function Pause-Wizard {
+    if ($Yes) { return }
     Write-Host ""
     Read-Host "  Press Enter to continue (or Ctrl-C to abort)" | Out-Null
 }
 function Read-WithDefault($prompt, $default) {
+    if ($Yes) { return $default }
     Write-Host -NoNewline "  "
-    if ($default) {
-        $reply = Read-Host "$prompt [$default]"
-    } else {
-        $reply = Read-Host $prompt
-    }
+    if ($default) { $reply = Read-Host "$prompt [$default]" } else { $reply = Read-Host $prompt }
     if ([string]::IsNullOrEmpty($reply)) { return $default } else { return $reply }
 }
 function Confirm-YesNo($prompt) {
+    if ($Yes) { return $true }
     Write-Host -NoNewline "  "
     $reply = Read-Host "$prompt [y/N]"
     return $reply -match '^[Yy]$'
 }
 
-# ---------- 1. Welcome ----------
-
-Clear-Host
-Write-Host ""
-Write-Host "   +-------------------------------------------------------------+" -ForegroundColor Cyan
-Write-Host "   |                                                             |" -ForegroundColor Cyan
-Write-Host "   |       claude-code-syncthing  --  Setup Wizard               |" -ForegroundColor Cyan
-Write-Host "   |                                                             |" -ForegroundColor Cyan
-Write-Host "   |   Sync your Claude Code state across multiple devices,      |" -ForegroundColor Cyan
-Write-Host "   |   peer-to-peer, no cloud account.                           |" -ForegroundColor Cyan
-Write-Host "   |                                                             |" -ForegroundColor Cyan
-Write-Host "   +-------------------------------------------------------------+" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "  Platform detected: Windows  (host: $env:COMPUTERNAME)"
-Write-Host ""
-Write-Host "  This wizard will:"
-Write-Host "    1. Install Syncthing if needed"
-Write-Host "    2. Set up autostart so it runs in the background"
-Write-Host "    3. Configure ~/.claude as a synced folder (with sane ignores)"
-Write-Host "    4. Walk you through pairing with your other device(s)"
-Write-Host ""
-Write-Host "  Important: at least " -NoNewline; Write-Host "one device must be always-on" -NoNewline -ForegroundColor Yellow
-Write-Host " (a desktop you leave"
-Write-Host "  running, a Pi, NAS, or HAOS instance). Without it, sync only happens"
-Write-Host "  when devices overlap online."
-Pause-Wizard
-
-# ---------- 2. Install ----------
-
-Phase 1 4 "Install Syncthing"
-
-if (-not (Get-Command syncthing -ErrorAction SilentlyContinue)) {
-    Note "Installing Syncthing via winget..."
-    winget install -e --id Syncthing.Syncthing --accept-source-agreements --accept-package-agreements | Out-Null
-    $env:Path += ";$env:LOCALAPPDATA\Microsoft\WinGet\Links"
-    Ok "Syncthing installed"
-} else {
-    Ok "Syncthing already installed"
+function Copy-ToClipboard($text) {
+    try { Set-Clipboard -Value $text -ErrorAction Stop; return $true } catch { return $false }
 }
-$Exe = (Get-Command syncthing -ErrorAction SilentlyContinue).Source
-if (-not $Exe) { $Exe = "$env:LOCALAPPDATA\Microsoft\WinGet\Links\syncthing.exe" }
-
-# ---------- 3. Local config ----------
-
-Phase 2 4 "Configure this device"
-
-if (-not (Test-Path $ConfigFile)) {
-    Copy-Item $ExampleFile $ConfigFile
-    Note "Created $ConfigFile (gitignored)"
+function Open-Browser($url) {
+    if ($NoBrowser) { return $false }
+    try { Start-Process $url -ErrorAction Stop; return $true } catch { return $false }
 }
 
 function Read-EnvFile($path) {
@@ -130,13 +112,144 @@ function Write-EnvFile($path, $vars) {
     $out | Set-Content -Path $path -Encoding utf8
 }
 
+function Find-ApiKey {
+    $p = Join-Path $env:LOCALAPPDATA "Syncthing\config.xml"
+    if (-not (Test-Path $p)) { return $null }
+    return ([xml](Get-Content $p)).configuration.gui.apikey
+}
+
+# ---------- --reset path ----------
+
+if ($Reset) {
+    Write-Host ""
+    Write-Host "   +-----------------------------------------------------------+" -ForegroundColor Yellow
+    Write-Host "   |  RESET MODE                                               |" -ForegroundColor Yellow
+    Write-Host "   |                                                           |" -ForegroundColor Yellow
+    Write-Host "   |  About to remove from this device:                        |" -ForegroundColor Yellow
+    Write-Host "   |   - peer device entries                                   |" -ForegroundColor Yellow
+    Write-Host "   |   - folder shares (claude + extra if any)                 |" -ForegroundColor Yellow
+    Write-Host "   |   - local config.env                                      |" -ForegroundColor Yellow
+    Write-Host "   |                                                           |" -ForegroundColor Yellow
+    Write-Host "   |  Syncthing itself stays installed and running.            |" -ForegroundColor Yellow
+    Write-Host "   |  Your ~/.claude/ data is NOT touched.                     |" -ForegroundColor Yellow
+    Write-Host "   +-----------------------------------------------------------+" -ForegroundColor Yellow
+    Write-Host ""
+    if (-not (Confirm-YesNo "Proceed with reset?")) { Write-Host "Aborted."; exit 0 }
+
+    $ApiKey = Find-ApiKey
+    if (-not $ApiKey) {
+        Warn "No Syncthing API key found -- nothing to remove via API."
+    } else {
+        $Base    = "http://127.0.0.1:8384/rest"
+        $AuthHdr = @{ "X-API-Key" = $ApiKey }
+
+        if (Test-Path $ConfigFile) {
+            $cfg = Read-EnvFile $ConfigFile
+            $extraLabel = if ($cfg.EXTRA_SYNC_LABEL) { $cfg.EXTRA_SYNC_LABEL } else { "code" }
+            foreach ($fid in @("claude", $extraLabel)) {
+                try {
+                    Invoke-RestMethod -Uri "$Base/config/folders/$fid" -Method Delete -Headers $AuthHdr -ErrorAction Stop | Out-Null
+                    Ok "removed folder: $fid"
+                } catch {
+                    Note "folder $fid: probably didn't exist"
+                }
+            }
+            $Ids = if ($cfg.PEER_IDS) { @($cfg.PEER_IDS.Split(',') | Where-Object { $_ }) } else { @() }
+            foreach ($pid in $Ids) {
+                try {
+                    Invoke-RestMethod -Uri "$Base/config/devices/$pid" -Method Delete -Headers $AuthHdr -ErrorAction Stop | Out-Null
+                    Ok "removed peer: $($pid.Substring(0,7))..."
+                } catch {
+                    Note "peer $($pid.Substring(0,7))...: not found"
+                }
+            }
+        } else {
+            Note "No config.env found -- skipping API cleanup."
+        }
+    }
+
+    if (Test-Path $ConfigFile) { Remove-Item $ConfigFile -Force; Ok "removed $ConfigFile" }
+
+    Write-Host ""
+    Write-Host "  Reset complete." -ForegroundColor Green
+    Write-Host "  Run .\scripts\bootstrap.ps1 again to set up fresh." -ForegroundColor DarkGray
+    exit 0
+}
+
+# ---------- 0. Welcome ----------
+
+Clear-Host
+Write-Host ""
+Write-Host "   +-------------------------------------------------------------+" -ForegroundColor Cyan
+Write-Host "   |                                                             |" -ForegroundColor Cyan
+Write-Host "   |       claude-code-syncthing  --  Setup Wizard               |" -ForegroundColor Cyan
+Write-Host "   |                                                             |" -ForegroundColor Cyan
+Write-Host "   |   Sync your Claude Code state across multiple devices,      |" -ForegroundColor Cyan
+Write-Host "   |   peer-to-peer, no cloud account.                           |" -ForegroundColor Cyan
+Write-Host "   |                                                             |" -ForegroundColor Cyan
+Write-Host "   +-------------------------------------------------------------+" -ForegroundColor Cyan
+Write-Host ""
+Write-Host -NoNewline "  Platform: Windows  host: $env:COMPUTERNAME"
+if ($Yes) { Write-Host "  (non-interactive)" -ForegroundColor DarkGray } else { Write-Host "" }
+Write-Host ""
+Write-Host "  This wizard will: install Syncthing, set up autostart, configure"
+Write-Host "  sync of ~/.claude, and walk you through pairing other devices."
+Write-Host ""
+Write-Host "  At least " -NoNewline; Write-Host "one device must be always-on" -NoNewline -ForegroundColor Yellow
+Write-Host " (desktop, Pi, NAS, HAOS)."
+Pause-Wizard
+
+# ---------- 1. Pre-flight ----------
+
+Phase 1 5 "Pre-flight checks"
+
+$PreflightFail = $false
+function Check-Tool($name, $cmd) {
+    if (Get-Command $cmd -ErrorAction SilentlyContinue) { Ok $name } else { Warn "$name -- not found"; $script:PreflightFail = $true }
+}
+Check-Tool "winget" "winget"
+Check-Tool "git"    "git"
+
+$psVer = $PSVersionTable.PSVersion
+Ok "PowerShell $($psVer.Major).$($psVer.Minor)"
+
+if ($PreflightFail) {
+    Warn "Some prerequisites are missing. Install them and re-run, or continue at your own risk."
+    if (-not (Confirm-YesNo "Continue anyway?")) { exit 1 }
+}
+
+# ---------- 2. Install ----------
+
+Phase 2 5 "Install Syncthing"
+
+if (-not (Get-Command syncthing -ErrorAction SilentlyContinue)) {
+    Note "Installing Syncthing via winget..."
+    winget install -e --id Syncthing.Syncthing --accept-source-agreements --accept-package-agreements | Out-Null
+    $env:Path += ";$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+    Ok "Syncthing installed"
+} else {
+    Ok "Syncthing already installed"
+}
+$Exe = (Get-Command syncthing -ErrorAction SilentlyContinue).Source
+if (-not $Exe) { $Exe = "$env:LOCALAPPDATA\Microsoft\WinGet\Links\syncthing.exe" }
+
+# ---------- 3. Local config ----------
+
+Phase 3 5 "Configure this device"
+
+if (-not (Test-Path $ConfigFile)) { Copy-Item $ExampleFile $ConfigFile; Note "Created $ConfigFile (gitignored)" }
+
 $cfg = Read-EnvFile $ConfigFile
 $ClaudeDir = if ($cfg.CLAUDE_DIR) { $cfg.CLAUDE_DIR -replace '\$HOME', $env:USERPROFILE.Replace('\','/') } else { Join-Path $env:USERPROFILE ".claude" }
 $ExtraDir   = $cfg.EXTRA_SYNC_DIR
 $ExtraLabel = if ($cfg.EXTRA_SYNC_LABEL) { $cfg.EXTRA_SYNC_LABEL } else { "code" }
 New-Item -ItemType Directory -Path $ClaudeDir -Force | Out-Null
 
-if (-not $cfg.PEER_IDS -and -not $ExtraDir) {
+if (Test-Path (Join-Path $ClaudeDir "settings.json")) {
+    Note "Found existing $ClaudeDir\settings.json -- left alone (settings are per-device)"
+}
+
+if (-not $cfg.PEER_IDS -and -not $ExtraDir -and -not $Yes) {
     Write-Host "  Optional: also sync a code/projects directory between devices."
     Write-Host "  (e.g. ~/Desktop/projekte, ~/code -- leave blank to skip)" -ForegroundColor DarkGray
     while ($true) {
@@ -155,7 +268,7 @@ if (-not $cfg.PEER_IDS -and -not $ExtraDir) {
             $ExtraLabel = Read-WithDefault "Label for this folder" "code"
             break
         }
-        Write-Host "  (typo? press Enter to retry, or type blank to skip extra folder)" -ForegroundColor DarkGray
+        Write-Host "  (typo? press Enter to retry, or type blank to skip)" -ForegroundColor DarkGray
         $ExtraDir = ""
     }
 }
@@ -192,22 +305,21 @@ for ($i = 0; $i -lt 30; $i++) {
     } catch { Write-Host -NoNewline "."; Start-Sleep 1 }
 }
 
-$ConfigXml = Join-Path $env:LOCALAPPDATA "Syncthing\config.xml"
-$ApiKey    = ([xml](Get-Content $ConfigXml)).configuration.gui.apikey
-$Base      = "http://127.0.0.1:8384/rest"
-$AuthHdr   = @{ "X-API-Key" = $ApiKey }
-$JsonHdr   = @{ "X-API-Key" = $ApiKey; "Content-Type" = "application/json" }
-$SelfId    = (Invoke-RestMethod -Uri "$Base/system/status" -Headers $AuthHdr).myID
+$ApiKey  = Find-ApiKey
+if (-not $ApiKey) { Fail "Could not locate Syncthing API key" }
+$Base    = "http://127.0.0.1:8384/rest"
+$AuthHdr = @{ "X-API-Key" = $ApiKey }
+$JsonHdr = @{ "X-API-Key" = $ApiKey; "Content-Type" = "application/json" }
+$SelfId  = (Invoke-RestMethod -Uri "$Base/system/status" -Headers $AuthHdr).myID
 
 # ---------- 4. Pair ----------
 
-Phase 3 4 "Pair with another device"
+Phase 4 5 "Pair with another device"
 
 Write-Host "  Your device ID is:"
 Write-Host ""
 Write-Host "  $SelfId" -ForegroundColor Green
-Write-Host ""
-Write-Host "  (You can also see it later: web UI at http://127.0.0.1:8384 -> Actions -> Show ID)" -ForegroundColor DarkGray
+if (Copy-ToClipboard $SelfId) { Write-Host "  (copied to clipboard)" -ForegroundColor DarkGray }
 Write-Host ""
 
 $Ids   = if ($cfg.PEER_IDS)        { @($cfg.PEER_IDS.Split(',')        | Where-Object { $_ }) } else { @() }
@@ -242,16 +354,9 @@ if (Confirm-YesNo "Add a peer device now?") {
     Write-Host "  HAOS Pi -- install the Syncthing add-on (UI, no script)." -ForegroundColor DarkGray
     Write-Host "    -> docs/haos-addon.md" -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  Either way, the other device will SHOW its Device ID:"
-    Write-Host "    * wizard prints it at the end"
-    Write-Host "    * HAOS UI: Actions -> Show ID"
-    Write-Host ""
-    Write-Host "  If the other side ASKS for YOUR Device ID, paste this:"
-    Write-Host "    $SelfId" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "  (HAOS doesn't ask -- it auto-accepts whoever connects.)" -ForegroundColor DarkGray
-    Write-Host ""
-    Write-Host "  Come back here when you have the other device's Device ID."
+    Write-Host "  Either way, the other device will SHOW its Device ID."
+    Write-Host "  If asked for YOUR ID, paste:" -NoNewline; Write-Host " $SelfId" -ForegroundColor Green
+    Write-Host "  (HAOS auto-accepts, no paste needed.)" -ForegroundColor DarkGray
     Pause-Wizard
 
     while ($true) {
@@ -259,6 +364,14 @@ if (Confirm-YesNo "Add a peer device now?") {
         if (-not $pid -or $pid -eq "done") { break }
         if ($pid -notmatch '^[A-Z0-9]{7}(-[A-Z0-9]{7}){7}$') {
             Warn "That doesn't look like a Syncthing device ID. Try again, or 'done'."
+            continue
+        }
+        if ($pid -eq $SelfId) {
+            Warn "That's THIS device's own ID -- you don't add yourself as a peer."
+            continue
+        }
+        if ($Ids -contains $pid) {
+            Warn "This peer is already configured. Skipping."
             continue
         }
         $pname = Read-WithDefault "Name for this peer" "Peer-$($Ids.Count + 1)"
@@ -284,12 +397,11 @@ if (Confirm-YesNo "Add a peer device now?") {
 
 # ---------- 5. Apply ----------
 
-Phase 4 4 "Apply Syncthing config"
+Phase 5 5 "Apply Syncthing config"
 
 $alwaysOnCount = ($Alw | Where-Object { $_ -eq "true" }).Count
 if ($alwaysOnCount -eq 0 -and $Ids.Count -gt 0) {
-    Warn "No peer is marked always-on."
-    Warn "Devices may not sync when not simultaneously online."
+    Warn "No peer is marked always-on. Sync only happens when devices overlap online."
 }
 
 Note "Registering $($Ids.Count) peer device(s)..."
@@ -316,12 +428,10 @@ function Upsert-Folder($id, $path) {
     if (-not (Test-Path $path)) { New-Item -ItemType Directory -Path $path -Force | Out-Null }
     $exists = $false
     try { Invoke-RestMethod -Uri "$Base/config/folders/$id" -Headers $AuthHdr -ErrorAction Stop | Out-Null; $exists = $true } catch {}
-
     $devices = @( @{ deviceID = $SelfId; introducedBy = ""; encryptionPassword = "" } )
     foreach ($pid in $Ids) {
         $devices += @{ deviceID = $pid; introducedBy = ""; encryptionPassword = "" }
     }
-
     $body = @{
         id = $id; label = $id; path = $path; type = "sendreceive"
         rescanIntervalS = 3600; fsWatcherEnabled = $true; fsWatcherDelayS = 10
@@ -333,7 +443,6 @@ function Upsert-Folder($id, $path) {
         }
         ignoreDelete = $false; copyOwnershipFromParent = $false
     } | ConvertTo-Json -Depth 10
-
     $method = if ($exists) { "Put" } else { "Post" }
     $url = if ($exists) { "$Base/config/folders/$id" } else { "$Base/config/folders" }
     Invoke-RestMethod -Uri $url -Method $method -Headers $JsonHdr -Body $body | Out-Null
@@ -344,40 +453,55 @@ Note "Configuring folders..."
 Upsert-Folder "claude" $ClaudeDir
 if ($ExtraDir) { Upsert-Folder $ExtraLabel $ExtraDir }
 
-# ---------- 6. Final summary ----------
+# ---------- 5a. Verify connections ----------
+
+if ($Ids.Count -gt 0) {
+    Write-Host ""
+    Note "Waiting for peers to come online (up to 30s)..."
+    $endT = (Get-Date).AddSeconds(30)
+    $seen = @{}
+    while ((Get-Date) -lt $endT) {
+        try {
+            $conns = Invoke-RestMethod -Uri "$Base/system/connections" -Headers $AuthHdr -ErrorAction Stop
+            $allSeen = $true
+            for ($i = 0; $i -lt $Ids.Count; $i++) {
+                $pid = $Ids[$i]
+                if ($seen.ContainsKey($pid)) { continue }
+                $c = $conns.connections.$pid
+                if ($c -and $c.connected) {
+                    Ok "$($Names[$i]): connected"
+                    $seen[$pid] = $true
+                } else { $allSeen = $false }
+            }
+            if ($allSeen) { break }
+        } catch {}
+        Start-Sleep -Seconds 2
+    }
+    for ($i = 0; $i -lt $Ids.Count; $i++) {
+        if (-not $seen.ContainsKey($Ids[$i])) {
+            Warn "$($Names[$i]): not yet connected (peer must be online and have YOUR ID configured)"
+        }
+    }
+}
+
+# ---------- 6. Summary ----------
 
 Write-Host ""
 Write-Host "====================================================================" -ForegroundColor Green
 Write-Host "  [OK] Setup complete on this device" -ForegroundColor Green
 Write-Host "====================================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  This device's ID (share with future peers):"
-Write-Host "  $SelfId" -ForegroundColor Green
+Write-Host "  This device's ID:  " -NoNewline; Write-Host $SelfId -ForegroundColor Green
+if (Copy-ToClipboard $SelfId) { Write-Host "  (also in your clipboard)" -ForegroundColor DarkGray }
 Write-Host ""
 Write-Host "  Web UI:        http://127.0.0.1:8384"
 Write-Host "  Config file:   $ConfigFile"
 Write-Host ""
-
 if ($Ids.Count -gt 0) {
-    Write-Host "  What happens now:"
-    Write-Host "    Sync starts automatically once the other side has YOUR device ID too."
-    Write-Host ""
-    Write-Host "  On the other device, make sure it knows about you:"
-    for ($i = 0; $i -lt $Ids.Count; $i++) {
-        Write-Host "    " -NoNewline; Write-Host $Names[$i] -NoNewline
-        Write-Host ": re-run the wizard there with " -NoNewline
-        Write-Host "y" -NoNewline -ForegroundColor White
-        Write-Host " when asked, paste " -NoNewline
-        Write-Host $SelfId -ForegroundColor Green
-    }
-    Write-Host ""
-    Write-Host "  Open the web UI to watch -- devices show 'Connected' (green) when paired," -ForegroundColor DarkGray
-    Write-Host "  then folders go 'Up to Date' once initial sync finishes (10-60 min for large state)." -ForegroundColor DarkGray
-} else {
-    Warn "No peers configured yet. Run this wizard again with peer IDs"
-    Write-Host "  to enable sync. Until then, Syncthing is installed but not sharing anything."
+    Write-Host "  Next: make sure each peer device knows YOUR ID."
 }
+Write-Host ""
+Write-Host "  Tip: .\scripts\bootstrap.ps1 -Reset to undo. -Help for more flags." -ForegroundColor DarkGray
+Write-Host ""
 
-Write-Host ""
-Write-Host "  Trouble? See docs/troubleshooting.md" -ForegroundColor DarkGray
-Write-Host ""
+if (Open-Browser "http://127.0.0.1:8384") { Note "Opening Web UI..." }
