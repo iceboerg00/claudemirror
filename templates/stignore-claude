@@ -29,10 +29,10 @@ desktop.ini
 .stfolder
 
 // --- Cross-platform Claude session resume helpers ---
-// Linux Claude derives project folder name from absolute pwd, so on Ubuntu
-// the folders are named like "-home-mike-Desktop-myproject" while Windows
-// names them "C--Users-Mike-Desktop-myproject". The bootstrap on Linux
-// creates the "-home-mike-*" entries as SYMLINKS to the Windows-named real
+// Linux Claude derives project folder name from absolute pwd, so on Linux
+// the folders are named like "-home-USER-Desktop-myproject" while Windows
+// names them "C--Users-USER-Desktop-myproject". The bootstrap on Linux
+// creates the "-home-USER-*" entries as SYMLINKS to the Windows-named real
 // folders. These symlinks are device-local and should not propagate.
 projects/-home-*
 projects/-Users-*

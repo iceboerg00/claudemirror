@@ -1,6 +1,6 @@
 # claude-code-syncthing
 
-> Sync your [Claude Code](https://claude.com/claude-code) state — sessions, skills, custom hooks, plans — across all your devices using [Syncthing](https://syncthing.net/). Live, P2P, end-to-end encrypted, no cloud account.
+> Sync your [Claude Code](https://claude.com/claude-code) state — sessions, skills, plans, agents, plugins — across all your devices using [Syncthing](https://syncthing.net/). Live, P2P, end-to-end encrypted, no cloud account.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#)
@@ -82,15 +82,22 @@ PowerShell uses PascalCase flags: `-Reset`, `-Yes`, `-NoBrowser`, `-Help`.
 
 ## What's synced
 
-From `~/.claude/`:
+Fully synced from `~/.claude/`:
 - `projects/` — session histories (the main reason for this project)
 - `skills/`, `plans/`, `tasks/`, `agents/` — your work-in-progress
-- `history.jsonl`, `CLAUDE.md` — global instructions / shell history
+- `history.jsonl`, `CLAUDE.md` — shell history, global instructions
+- `plugins/` — installed plugins (can be hundreds of MB)
+- `hooks/` — hook scripts (see caveat below)
+- `statusline.js` and similar single files at the root
 
 Not synced (per [`templates/stignore-claude`](templates/stignore-claude)):
-- `settings.json` — paths differ per platform; you maintain it per-device
+- `settings.json` — paths inside differ per platform; you maintain it per-device
 - `cache/`, `paste-cache/`, `shell-snapshots/`, `session-env/`, `telemetry/`, `debug/`, `downloads/`, `backups/` — volatile per-device
-- Plugin/skill symlinks that don't survive Windows ↔ Linux (NTFS vs ext4 differences)
+- Specific plugin/skill symlinks known to break Windows ↔ Linux (e.g. `skills/impeccable`, ui-ux-pro-max-skill data/scripts dirs)
+
+**Important caveats:**
+- **`hooks/` and `statusline.js` sync, but only the *files*.** Their *registration* lives in `settings.json` (which doesn't sync) with hardcoded absolute paths like `C:/Users/USER/.claude/hooks/...`. To use them on another platform you must add the correct path in that platform's `settings.json`.
+- **`plugins/` sync includes platform binaries.** Some plugins ship native libraries (`.dll`/`.so`) that won't work on the other OS. Re-install affected plugins per-platform via Claude's plugin command if you hit issues; it fetches the right architecture.
 
 Optional: a code/projects directory you specify during setup. Defaults to no extra folder.
 
@@ -102,12 +109,12 @@ Optional: a code/projects directory you specify during setup. Defaults to no ext
 Both devices will write to the same `<session>.jsonl` — Syncthing creates `.sync-conflict-*` files. Workflow: close Claude on device A, wait for green status, then open on device B.
 
 ### `settings.json` is per-device
-Paths like `C:\Users\Mike\.claude\statusline.js` don't exist on Linux. The wizard does NOT touch your existing `settings.json`. If you have one with hooks/statusLine, maintain a copy per platform yourself.
+Paths like `C:\Users\USER\.claude\statusline.js` don't exist on Linux. The wizard does NOT touch your existing `settings.json`. If you have one with hooks/statusLine, maintain a copy per platform yourself.
 
 ### Cross-platform Claude project folder names
 Claude derives `~/.claude/projects/<id>/` from the absolute pwd:
-- Windows: `C--Users-Mike-Desktop-myproject`
-- Linux:   `-home-mike-Desktop-myproject`
+- Windows: `C--Users-USER-Desktop-myproject`
+- Linux:   `-home-USER-Desktop-myproject`
 
 After syncing from Windows, the bootstrap on Linux/macOS automatically creates symlinks (Linux-name → Windows-name) so `claude --resume` finds existing sessions. Re-run the bootstrap if new project folders appear later.
 

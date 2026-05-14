@@ -4,9 +4,9 @@
 # after syncing project folders from a Windows machine.
 #
 # Claude derives the project folder name from the absolute working directory:
-#   Windows:  pwd=C:\Users\Mike\Desktop\myproject  -> projects/C--Users-Mike-Desktop-myproject
-#   Linux:    pwd=/home/mike/Desktop/myproject     -> projects/-home-mike-Desktop-myproject
-#   macOS:    pwd=/Users/mike/Desktop/myproject    -> projects/-Users-mike-Desktop-myproject
+#   Windows:  pwd=C:\Users\USER\Desktop\myproject  -> projects/C--Users-USER-Desktop-myproject
+#   Linux:    pwd=/home/USER/Desktop/myproject     -> projects/-home-USER-Desktop-myproject
+#   macOS:    pwd=/Users/USER/Desktop/myproject    -> projects/-Users-USER-Desktop-myproject
 #
 # This script creates symlinks Linux-name -> Windows-name so `claude --resume`
 # finds Windows-originated sessions. Any new writes flow through the symlink

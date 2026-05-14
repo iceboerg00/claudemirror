@@ -77,8 +77,8 @@ Then `rm` what you find. Sync will clear up on the next rescan (auto every hour,
 ### Sessions don't show up on Linux/macOS after sync from Windows
 
 Claude derives `~/.claude/projects/<id>/` from the absolute pwd:
-- Windows: `C--Users-Mike-Desktop-myproject`
-- Linux:   `-home-mike-Desktop-myproject`
+- Windows: `C--Users-USER-Desktop-myproject`
+- Linux:   `-home-USER-Desktop-myproject`
 
 The bootstrap creates symlinks on Linux/macOS (Linux-name → Windows-name) so `claude --resume` finds Windows-originated sessions. If you skipped that step, or new project folders appeared after the first run:
 

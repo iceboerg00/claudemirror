@@ -193,10 +193,10 @@ Sample output (5 phases):
   Optional: also sync a code/projects directory between devices.
   (e.g. ~/Desktop/projekte, ~/code -- leave blank to skip)
   Extra folder path: ~/code
-  ✓ Path exists: /home/mike/code
+  ✓ Path exists: /home/USER/code
   Label for this folder [code]:
-  ✓ /home/mike/.claude/.stignore
-  ✓ /home/mike/code/.stignore
+  ✓ /home/USER/.claude/.stignore
+  ✓ /home/USER/code/.stignore
   ✓ syncthing.service enabled and started
   Waiting for Syncthing API ✓
 
@@ -227,7 +227,7 @@ Sample output (5 phases):
   (also in your clipboard)
 
   Web UI:        http://127.0.0.1:8384
-  Config file:   /home/mike/claude-code-syncthing/config.env
+  Config file:   /home/USER/claude-code-syncthing/config.env
 
   Tip: ./scripts/bootstrap.sh --reset to undo. --help for more flags.
 ```
